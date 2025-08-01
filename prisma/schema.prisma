@@ -1,0 +1,171 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  first_name      String
+  last_name       String
+  email           String    @unique
+  password_hashed String
+  date_of_birth   DateTime?
+  gender          String?
+  role_id         Int
+  role            Role      @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  otp                Otp[]
+  history            History[]
+  documents          PreviousDocument[]
+  allergies          Allergy[]
+  appointments       Appointment[]      @relation("PatientAppointments")
+  doctorAppointments Appointment[]      @relation("DoctorAppointments")
+  prescriptions      Prescription[]     @relation("PatientPrescriptions")
+  soap_notes         SoapNote[]         @relation("PatientSoapNotes")
+  audit_logs         AuditLog[]         @relation("UserActions")
+  Prescription       Prescription[]
+  SoapNote           SoapNote[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model Role {
+  id         Int      @id @default(autoincrement())
+  role_name  String   @unique
+  users      User[]
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model File {
+  id             Int                @id @default(autoincrement())
+  file_name      String
+  file_URL       String
+  file_type      String
+  file_extension String
+  source         String             @default("upload") //! 'upload' or 'link'
+  documents      PreviousDocument[]
+  prescriptions  Prescription[]
+  soap_notes     SoapNote[]
+  created_at     DateTime           @default(now())
+  updated_at     DateTime           @updatedAt
+}
+
+model Otp {
+  id         Int      @id @default(autoincrement())
+  otp_code   String
+  expires_at DateTime
+  used       Boolean  @default(false)
+  attempts   Int      @default(0)
+  user_id    Int
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model History {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  history    String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model PreviousDocument {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  file_id    Int
+  file       File     @relation(fields: [file_id], references: [id], onDelete: Cascade)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model Allergy {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  allergy    String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model Appointment {
+  id               Int      @id @default(autoincrement())
+  patient_id       Int
+  doctor_id        Int
+  patient          User     @relation("PatientAppointments", fields: [patient_id], references: [id], onDelete: Cascade)
+  doctor           User     @relation("DoctorAppointments", fields: [doctor_id], references: [id], onDelete: Cascade)
+  appointment_date DateTime
+  status           String
+  notes            String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+}
+
+model Prescription {
+  id           Int       @id @default(autoincrement())
+  patient_id   Int
+  doctor_id    Int
+  patient      User      @relation("PatientPrescriptions", fields: [patient_id], references: [id], onDelete: Cascade)
+  doctor       User      @relation(fields: [doctor_id], references: [id], onDelete: Cascade)
+  file_id      Int?
+  file         File?     @relation(fields: [file_id], references: [id], onDelete: SetNull)
+  medicine_id  Int?
+  medicine     Medicine? @relation(fields: [medicine_id], references: [id], onDelete: SetNull)
+  dosage       String?
+  instructions String?
+  ai_generated Boolean   @default(false)
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+}
+
+model SoapNote {
+  id           Int      @id @default(autoincrement())
+  patient_id   Int
+  doctor_id    Int
+  patient      User     @relation("PatientSoapNotes", fields: [patient_id], references: [id], onDelete: Cascade)
+  doctor       User     @relation(fields: [doctor_id], references: [id], onDelete: Cascade)
+  file_id      Int?
+  file         File?    @relation(fields: [file_id], references: [id], onDelete: SetNull)
+  subjective   String?
+  objective    String?
+  assessment   String?
+  plan         String?
+  ai_generated Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+}
+
+model Medicine {
+  id            Int            @id @default(autoincrement())
+  name          String
+  description   String?
+  prescriptions Prescription[]
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  user_id     Int?
+  user        User?    @relation("UserActions", fields: [user_id], references: [id], onDelete: SetNull)
+  action      String
+  entity_type String
+  entity_id   Int?
+  details     Json?
+  ip_address  String?
+  created_at  DateTime @default(now())
+}
