@@ -5,10 +5,12 @@ import { PrismaModule } from 'src/prisma/prisma.module';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './strategy/jwt.strategy';
 import { EmailService } from './email.service';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
     PrismaModule,
+    ScheduleModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'your_jwt_secret',
     }),

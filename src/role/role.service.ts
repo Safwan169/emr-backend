@@ -18,35 +18,7 @@ export class RoleService {
   }
 
   private async seedDefaultRoles() {
-    const defaultRoles = [
-      'Admin',
-      'Patient',
-      'Doctor',
-      'Nurse',
-      'Pharmacist',
-      'Lab Technician',
-      'Radiologist',
-      'Surgeon',
-      'Therapist',
-      'Anesthesiologist',
-      'Dentist',
-      'Psychiatrist',
-      'Pathologist',
-      'Receptionist',
-      'Billing Staff',
-      'Insurance Officer',
-      'Medical Coder',
-      'Medical Records Clerk',
-      'Inventory Manager',
-      'IT Support',
-      'HR Officer',
-      'Cleaner',
-      'Security',
-      'Relative',
-      'Volunteer',
-      'Emergency Responder',
-      'Ambulance Driver',
-    ];
+    const defaultRoles = ['Patient', 'Doctor'];
 
     for (const roleName of defaultRoles) {
       const normalized = this.normalizeRoleName(roleName);

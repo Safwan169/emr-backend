@@ -148,7 +148,7 @@ export class EmailService {
       };
 
       await this.transporter.sendMail(mailOptions);
-      this.logger.log(`✅ OTP email sent to ${email}`);
+      this.logger.log(`✅ OTP sent to email: ${email}`);
     } catch (error) {
       this.logger.error(`❌ Failed to send OTP email to ${email}:`, error);
       throw new Error('Failed to send OTP email');
