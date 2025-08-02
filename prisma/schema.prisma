@@ -32,21 +32,23 @@ model User {
   height_cm   Float?
   weight_lbs  Float?
 
-  otp                  Otp[]
-  medical_history_type MedicalHistoryType[]
-  allergies            Allergy[]
-  soap_notes           SoapNote[]           @relation("PatientSoapNotes")
-  audit_logs           AuditLog[]           @relation("UserActions")
-  Prescription         Prescription[]
-  SoapNote             SoapNote[]
+  otp          Otp[]
+  allergies    Allergy[]
+  soap_notes   SoapNote[]     @relation("PatientSoapNotes")
+  audit_logs   AuditLog[]     @relation("UserActions")
+  Prescription Prescription[]
+  SoapNote     SoapNote[]
 
   EmergencyContact EmergencyContact?
 
-  created_at         DateTime             @default(now())
-  updated_at         DateTime             @updatedAt
-  LatestPrescription LatestPrescription[]
-  LabReport          LabReport[]
-  DoctorProfile      DoctorProfile?
+  created_at              DateTime                  @default(now())
+  updated_at              DateTime                  @updatedAt
+  LatestPrescription      LatestPrescription[]
+  LabReport               LabReport[]
+  DoctorProfile           DoctorProfile?
+  ChronicConditionHistory ChronicConditionHistory[]
+  SurgicalHistory         SurgicalHistory[]
+  VaccineHistory          VaccineHistory[]
 
   @@unique([role_id, user_id]) // Unique user_id per role
 }
@@ -123,25 +125,11 @@ model Otp {
   updated_at DateTime @updatedAt
 }
 
-model MedicalHistoryType {
-  id           Int    @id @default(autoincrement())
-  user_id      Int
-  user         User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  history_type String // 'current chronic condition' | 'surgical history' | 'vaccine history'
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  ChronicConditionHistory ChronicConditionHistory?
-  SurgicalHistory         SurgicalHistory?
-  VaccineHistory          VaccineHistory?
-}
-
 model ChronicConditionHistory {
   id Int @id @default(autoincrement())
 
-  medical_history_type_id Int                @unique
-  medical_history_type    MedicalHistoryType @relation(fields: [medical_history_type_id], references: [id], onDelete: Cascade)
+  user_id Int
+  user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   name               String
   diagnosed          DateTime
@@ -155,8 +143,8 @@ model ChronicConditionHistory {
 model SurgicalHistory {
   id Int @id @default(autoincrement())
 
-  medical_history_type_id Int                @unique
-  medical_history_type    MedicalHistoryType @relation(fields: [medical_history_type_id], references: [id], onDelete: Cascade)
+  user_id Int
+  user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   procedure     String
   surgery_date  DateTime
@@ -171,8 +159,8 @@ model SurgicalHistory {
 model VaccineHistory {
   id Int @id @default(autoincrement())
 
-  medical_history_type_id Int                @unique
-  medical_history_type    MedicalHistoryType @relation(fields: [medical_history_type_id], references: [id], onDelete: Cascade)
+  user_id Int
+  user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   vaccine_name     String
   date             DateTime
