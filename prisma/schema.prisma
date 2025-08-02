@@ -1,0 +1,324 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              Int      @id @default(autoincrement())
+  user_id         Int
+  first_name      String
+  last_name       String
+  email           String   @unique
+  password_hashed String
+  date_of_birth   DateTime
+  gender          String
+  address         String?
+
+  role_id Int
+  role    Role @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  age         String?
+  blood_group String?
+  height_cm   Float?
+  weight_lbs  Float?
+
+  otp                  Otp[]
+  medical_history_type MedicalHistoryType[]
+  allergies            Allergy[]
+  appointments         Appointment[]        @relation("PatientAppointments")
+  doctorAppointments   Appointment[]        @relation("DoctorAppointments")
+  soap_notes           SoapNote[]           @relation("PatientSoapNotes")
+  audit_logs           AuditLog[]           @relation("UserActions")
+  Prescription         Prescription[]
+  SoapNote             SoapNote[]
+
+  EmergencyContact EmergencyContact?
+
+  created_at         DateTime             @default(now())
+  updated_at         DateTime             @updatedAt
+  LatestPrescription LatestPrescription[]
+  LabReport          LabReport[]
+
+  @@unique([role_id, user_id]) // Unique user_id per role
+}
+
+model EmergencyContact {
+  id Int @id @default(autoincrement())
+
+  user_id Int  @unique
+  user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  first_name   String
+  last_name    String
+  phone        String
+  relationship String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model Role {
+  id        Int    @id @default(autoincrement())
+  role_name String @unique
+  users     User[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model File {
+  id                   Int                    @id @default(autoincrement())
+  file_name            String
+  file_URL             String
+  file_type            String
+  file_extension       String
+  source               String                 @default("upload") //! 'upload' or 'link'
+  soap_notes           SoapNote[]
+  created_at           DateTime               @default(now())
+  updated_at           DateTime               @updatedAt
+  PreviousPrescription PreviousPrescription[]
+  PreviousLabReport    PreviousLabReport[]
+  LatestLabReport      LatestLabReport[]
+}
+
+model Otp {
+  id         Int      @id @default(autoincrement())
+  otp_code   String
+  expires_at DateTime
+  used       Boolean  @default(false)
+  attempts   Int      @default(0)
+  user_id    Int
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model MedicalHistoryType {
+  id           Int    @id @default(autoincrement())
+  user_id      Int
+  user         User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  history_type String // 'current chronic condition' | 'surgical history' | 'vaccine history'
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  ChronicConditionHistory ChronicConditionHistory?
+  SurgicalHistory         SurgicalHistory?
+  VaccineHistory          VaccineHistory?
+}
+
+model ChronicConditionHistory {
+  id Int @id @default(autoincrement())
+
+  medical_history_type_id Int                @unique
+  medical_history_type    MedicalHistoryType @relation(fields: [medical_history_type_id], references: [id], onDelete: Cascade)
+
+  name               String
+  diagnosed          DateTime
+  treating_physician String
+  last_updated       DateTime
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model SurgicalHistory {
+  id Int @id @default(autoincrement())
+
+  medical_history_type_id Int                @unique
+  medical_history_type    MedicalHistoryType @relation(fields: [medical_history_type_id], references: [id], onDelete: Cascade)
+
+  procedure     String
+  surgery_date  DateTime
+  surgeon_name  String
+  hospital_name String
+  complications String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model VaccineHistory {
+  id Int @id @default(autoincrement())
+
+  medical_history_type_id Int                @unique
+  medical_history_type    MedicalHistoryType @relation(fields: [medical_history_type_id], references: [id], onDelete: Cascade)
+
+  vaccine_name     String
+  date             DateTime
+  dose_name        String
+  vaccine_provider String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model Prescription {
+  id Int @id @default(autoincrement())
+
+  user_id Int
+  user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  previous_prescription PreviousPrescription?
+  LatestPrescription    LatestPrescription?
+
+  created_at          DateTime           @default(now())
+  updated_at          DateTime           @updatedAt
+  PreviousLabReport   PreviousLabReport? @relation(fields: [previousLabReportId], references: [id])
+  LatestLabReport     LatestLabReport?   @relation(fields: [latestLabReportId], references: [id])
+  previousLabReportId Int?
+  latestLabReportId   Int?
+}
+
+model PreviousPrescription {
+  id Int @id @default(autoincrement())
+
+  prescription_id Int          @unique
+  prescription    Prescription @relation(fields: [prescription_id], references: [id], onDelete: Cascade)
+
+  file_id Int
+  file    File @relation(fields: [file_id], references: [id], onDelete: Cascade)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model LatestPrescription {
+  id Int @id @default(autoincrement())
+
+  prescription_id Int          @unique
+  prescription    Prescription @relation(fields: [prescription_id], references: [id], onDelete: Cascade)
+
+  //! Prescribing doctor (user who created the prescription)
+  prescribed_by_user_id Int
+  prescribed_by         User @relation(fields: [prescribed_by_user_id], references: [id], onDelete: Cascade)
+
+  prescribed_medicine_name String
+  duration                 String
+  dosage                   String
+  refills_left             Int?
+  instruction              String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model LabReport {
+  id Int @id @default(autoincrement())
+
+  user_id Int
+  user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  created_at        DateTime           @default(now())
+  updated_at        DateTime           @updatedAt
+  PreviousLabReport PreviousLabReport?
+  LatestLabReport   LatestLabReport?
+}
+
+model PreviousLabReport {
+  id Int @id @default(autoincrement())
+
+  lab_report_id Int       @unique
+  lab_report    LabReport @relation(fields: [lab_report_id], references: [id], onDelete: Cascade)
+
+  file_id Int
+  file    File @relation(fields: [file_id], references: [id], onDelete: Cascade)
+
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @updatedAt
+  Prescription Prescription[]
+}
+
+model LatestLabReport {
+  id Int @id @default(autoincrement())
+
+  lab_report_id Int       @unique
+  lab_report    LabReport @relation(fields: [lab_report_id], references: [id], onDelete: Cascade)
+
+  file_id Int
+  file    File @relation(fields: [file_id], references: [id], onDelete: Cascade)
+
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @updatedAt
+  Prescription Prescription[]
+}
+
+model Allergy {
+  id      Int  @id @default(autoincrement())
+  user_id Int
+  user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  allergy_name  String // e.g., "Peanuts"
+  allergy_type  String // e.g., "Food", "Drug", "Environmental"
+  condition     AllergyCondition // Enum: Severe, Moderate, Mild
+  reactions     String // e.g., "Swelling, Hives, Anaphylaxis"
+  note          String? // Additional notes by clinician
+  status        AllergyStatus    @default(active) // Active or Inactive
+  date_modified DateTime         @default(now())
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+enum AllergyCondition {
+  severe
+  moderate
+  mild
+}
+
+enum AllergyStatus {
+  active
+  inactive
+}
+
+model Appointment {
+  id               Int      @id @default(autoincrement())
+  patient_id       Int
+  doctor_id        Int
+  patient          User     @relation("PatientAppointments", fields: [patient_id], references: [id], onDelete: Cascade)
+  doctor           User     @relation("DoctorAppointments", fields: [doctor_id], references: [id], onDelete: Cascade)
+  appointment_date DateTime
+  status           String
+  notes            String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+}
+
+model SoapNote {
+  id           Int      @id @default(autoincrement())
+  patient_id   Int
+  doctor_id    Int
+  patient      User     @relation("PatientSoapNotes", fields: [patient_id], references: [id], onDelete: Cascade)
+  doctor       User     @relation(fields: [doctor_id], references: [id], onDelete: Cascade)
+  file_id      Int?
+  file         File?    @relation(fields: [file_id], references: [id], onDelete: SetNull)
+  subjective   String?
+  objective    String?
+  assessment   String?
+  plan         String?
+  ai_generated Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  user_id     Int?
+  user        User?    @relation("UserActions", fields: [user_id], references: [id], onDelete: SetNull)
+  action      String
+  entity_type String
+  entity_id   Int?
+  details     Json?
+  ip_address  String?
+  created_at  DateTime @default(now())
+}
