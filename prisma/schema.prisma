@@ -35,8 +35,6 @@ model User {
   otp                  Otp[]
   medical_history_type MedicalHistoryType[]
   allergies            Allergy[]
-  appointments         Appointment[]        @relation("PatientAppointments")
-  doctorAppointments   Appointment[]        @relation("DoctorAppointments")
   soap_notes           SoapNote[]           @relation("PatientSoapNotes")
   audit_logs           AuditLog[]           @relation("UserActions")
   Prescription         Prescription[]
@@ -48,6 +46,7 @@ model User {
   updated_at         DateTime             @updatedAt
   LatestPrescription LatestPrescription[]
   LabReport          LabReport[]
+  DoctorProfile      DoctorProfile?
 
   @@unique([role_id, user_id]) // Unique user_id per role
 }
@@ -76,6 +75,26 @@ model Role {
   updated_at DateTime @updatedAt
 }
 
+model DoctorProfile {
+  id Int @id @default(autoincrement())
+
+  user_id Int  @unique
+  user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  specialization      String?
+  fee                 Float?
+  rating              Float?  @default(0.0)
+  years_of_experience Float?
+  phone               String?
+  hospital            String?
+
+  image_file_id Int?
+  image_file    File? @relation(fields: [image_file_id], references: [id], onDelete: SetNull)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
 model File {
   id                   Int                    @id @default(autoincrement())
   file_name            String
@@ -89,6 +108,7 @@ model File {
   PreviousPrescription PreviousPrescription[]
   PreviousLabReport    PreviousLabReport[]
   LatestLabReport      LatestLabReport[]
+  DoctorProfile        DoctorProfile[]
 }
 
 model Otp {
@@ -219,8 +239,9 @@ model LabReport {
   user_id Int
   user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  created_at        DateTime           @default(now())
-  updated_at        DateTime           @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
   PreviousLabReport PreviousLabReport?
   LatestLabReport   LatestLabReport?
 }
@@ -279,19 +300,6 @@ enum AllergyCondition {
 enum AllergyStatus {
   active
   inactive
-}
-
-model Appointment {
-  id               Int      @id @default(autoincrement())
-  patient_id       Int
-  doctor_id        Int
-  patient          User     @relation("PatientAppointments", fields: [patient_id], references: [id], onDelete: Cascade)
-  doctor           User     @relation("DoctorAppointments", fields: [doctor_id], references: [id], onDelete: Cascade)
-  appointment_date DateTime
-  status           String
-  notes            String?
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
 }
 
 model SoapNote {
