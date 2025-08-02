@@ -27,17 +27,15 @@ export class AuthService {
     last_name: string;
     email: string;
     password: string;
-    date_of_birth?: string;
-    gender?: string;
+    date_of_birth: string;
+    gender: string;
   }) {
-    this.logger.log(
-      `📋 Attempting to register user with email: ${userData.email}`,
-    );
-
     const { first_name, last_name, email, password, date_of_birth, gender } =
       userData;
 
-    // Check if user already exists
+    this.logger.log(`📋 Attempting to register user with email: ${email}`);
+
+    // 1. Check if email is already taken
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
@@ -50,35 +48,37 @@ export class AuthService {
 
     const roleName = 'patient';
 
-    // Find or create patient role
-    let patientRole = await this.prisma.role.findUnique({
+    // 2. Get or create role
+    let role = await this.prisma.role.findUnique({
       where: { role_name: roleName },
     });
-    if (!patientRole) {
-      patientRole = await this.prisma.role.create({
-        data: { role_name: roleName },
-      });
+    if (!role) {
+      role = await this.prisma.role.create({ data: { role_name: roleName } });
       this.logger.log(`✏️ Role '${roleName}' created`);
     }
 
-    // Hash password
+    // 3. Generate next user_id based on role
+    const lastUser = await this.prisma.user.findFirst({
+      where: { role_id: role.id },
+      orderBy: { user_id: 'desc' },
+      select: { user_id: true },
+    });
+    const user_id = (lastUser?.user_id || 0) + 1;
+
+    // 4. Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const dobDate = userData.date_of_birth
-      ? new Date(userData.date_of_birth)
-      : null;
-
+    // 5. Create user
     const user = await this.prisma.user.create({
       data: {
+        user_id,
         first_name,
         last_name,
         email,
         password_hashed: hashedPassword,
-        date_of_birth: dobDate,
+        date_of_birth: new Date(date_of_birth),
         gender,
-        role: {
-          connect: { role_name: roleName },
-        },
+        role: { connect: { role_name: roleName } },
       },
       include: { role: true },
     });
@@ -96,6 +96,7 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
+      include: { role: true },
     });
 
     if (!user) {
@@ -211,7 +212,9 @@ export class AuthService {
         data: { attempts: otpRecord.attempts + 1 },
       });
       this.logger.warn(
-        `🚫 Invalid OTP entered for user ID ${user.id}. Attempts left: ${2 - otpRecord.attempts}`,
+        `🚫 Invalid OTP entered for user ID ${user.id}. Attempts left: ${
+          2 - otpRecord.attempts
+        }`,
       );
       throw new BadRequestException(
         `Invalid OTP. ${2 - otpRecord.attempts} attempts remaining.`,
@@ -315,7 +318,8 @@ export class AuthService {
 
   private formatUser(user: any) {
     return {
-      id: user.id,
+      id: user.id, // global unique user ID
+      user_id: user.user_id, // role-specific serial number
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,

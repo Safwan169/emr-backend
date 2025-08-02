@@ -2,7 +2,6 @@ import {
   IsEmail,
   IsNotEmpty,
   Length,
-  IsOptional,
   IsDateString,
   IsIn,
 } from 'class-validator';
@@ -22,16 +21,16 @@ export class RegisterDto {
   @Length(6, 10, { message: 'Password must be between 6 and 10 characters' })
   password: string;
 
-  @IsOptional()
+  @IsNotEmpty({ message: 'Date of birth is required' })
   @IsDateString(
     {},
     { message: 'Date of birth must be a valid ISO 8601 date string' },
   )
-  date_of_birth?: string;
+  date_of_birth: string;
 
-  @IsOptional()
+  @IsNotEmpty({ message: 'Gender is required' })
   @IsIn(['male', 'female', 'other'], {
     message: 'Gender must be male, female, or other',
   })
-  gender?: string;
+  gender: string;
 }

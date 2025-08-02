@@ -6,9 +6,17 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { FileUploadModule } from './file-upload/file-upload.module';
 import { RoleModule } from './role/role.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UserModule, FileUploadModule, RoleModule],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    UserModule,
+    FileUploadModule,
+    RoleModule,
+    ScheduleModule.forRoot(),
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
