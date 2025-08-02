@@ -4,11 +4,11 @@ import { Controller, Post,Get , Body, HttpException, HttpStatus } from '@nestjs/
 import { MedicalHistoryService } from './medical-history.service';
 import { CreateChronicConditionDto } from '../dto/create-chronic-condition.dto';
 
-@Controller('patient/medical-history')
+@Controller('Patient/Medical-History')
 export class MedicalHistoryController {
   constructor(private readonly medicalHistoryService: MedicalHistoryService) {}
 
-  @Post('chronic')
+  @Post('Chronic')
   async createChronicCondition(@Body() dto: CreateChronicConditionDto) {
     try {
       const chronic = await this.medicalHistoryService.createChronicCondition(dto);
@@ -24,7 +24,7 @@ export class MedicalHistoryController {
     }
   }
 
-   @Get('chronic')
+   @Get('Chronic')
   async getAllChronicConditions() {
     return this.medicalHistoryService.getAllChronicConditions();
   }
