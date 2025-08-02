@@ -16,26 +16,19 @@ import { successResponse, errorResponse } from '../common/response.handler';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { AdminGuard } from 'src/auth/guards/admin.guard';
 
-@Controller('users')
+@Controller('Users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post()
   // @UseGuards(JwtAuthGuard, AdminGuard)
   async create(@Body() createUserDto: CreateUserDto) {
-    try {
-      const user = await this.userService.create(createUserDto);
-      return successResponse(
-        user,
-        'User created successfully',
-        HttpStatus.CREATED,
-      );
-    } catch (error) {
-      return errorResponse(
-        error.message || 'Failed to create user',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const user = await this.userService.create(createUserDto);
+    return successResponse(
+      user,
+      'User created successfully',
+      HttpStatus.CREATED,
+    );
   }
 
   @Get()
