@@ -11,37 +11,37 @@ import {
 import { AuthService } from './auth.service';
 import { Response } from 'express';
 
-@Controller('auth')
+@Controller('Auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
   constructor(private authService: AuthService) {}
 
-  // Step 1 registration: send OTP
-  @Post('register')
+  //! Step 1 registration: send OTP
+  @Post('Register')
   @HttpCode(HttpStatus.OK)
   async sendOtpForRegistration(@Body() dto: any) {
     this.logger.log(`📝 Sending registration OTP for email: ${dto.email}`);
     return this.authService.sendOtpForRegistration(dto);
   }
 
-  // Step 2 registration: verify OTP & create user
-  @Post('register/verify-otp')
+  //! Step 2 registration: verify OTP & create user
+  @Post('Register/VerifyOTP')
   @HttpCode(HttpStatus.CREATED)
   async verifyOtpAndRegister(@Body() body: { email: string; otp: string }) {
     this.logger.log(`📝 Verifying registration OTP for email: ${body.email}`);
     return this.authService.verifyOtpAndRegister(body.email, body.otp);
   }
 
-  // Manual login password + send OTP
-  @Post('login')
+  //! Manual login password + send OTP
+  @Post('Login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: any, @Headers('user-agent') userAgent: string) {
     this.logger.log(`Login attempt with User-Agent: ${userAgent}`);
     return this.authService.login(dto);
   }
 
-  // Verify OTP for login
-  @Post('verify-otp')
+  //! Verify OTP for login
+  @Post('VerifyOTP')
   @HttpCode(HttpStatus.OK)
   async verifyOtp(
     @Body('otp_code') otp_code: string,
@@ -58,15 +58,15 @@ export class AuthController {
     return { user, access_token };
   }
 
-  // Resend OTP for login
-  @Post('resend-otp')
+  //! Resend OTP for login
+  @Post('ResendOTP')
   @HttpCode(HttpStatus.OK)
   async resendOtp() {
     return this.authService.resendOtp();
   }
 
-  // Logout
-  @Post('logout')
+  //! Logout
+  @Post('Logout')
   @HttpCode(HttpStatus.OK)
   logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie('access_token');
