@@ -27,6 +27,9 @@ model User {
   role_id Int
   role    Role @relation(fields: [role_id], references: [id], onDelete: Cascade)
 
+  profile_image_id Int?
+  profile_image    File? @relation("UserProfileImage", fields: [profile_image_id], references: [id], onDelete: SetNull)
+
   age         String?
   blood_group String?
   height_cm   Float?
@@ -52,8 +55,10 @@ model User {
   SurgicalHistory         SurgicalHistory[]
   VaccineHistory          VaccineHistory[]
   DoctorProfile           DoctorProfile?
+  File                    File?                     @relation(fields: [fileId], references: [id])
+  fileId                  Int?
 
-  @@unique([role_id, user_id]) // Unique user_id per role
+  @@unique([role_id, user_id])
 }
 
 model EmergencyContact {
@@ -94,10 +99,8 @@ model DoctorProfile {
   phone               String?
   hospital            String?
 
-  image_file_id Int?
-  image_file    File? @relation(fields: [image_file_id], references: [id], onDelete: SetNull)
-
-  // educations DoctorProfileEducationAndQualification[] @relation("DoctorProfileToEducation")
+  test_voice_file_id Int?
+  test_voice_file    File? @relation("DoctorProfileTestVoiceFile", fields: [test_voice_file_id], references: [id], onDelete: SetNull)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -105,6 +108,9 @@ model DoctorProfile {
   DoctorCertification                    DoctorCertification[]
   DoctorProfileEducationAndQualification DoctorProfileEducationAndQualification[]
   DoctorResearchAndPublication           DoctorResearchAndPublication[]
+
+  fileId Int?
+  File   File? @relation(fields: [fileId], references: [id])
 }
 
 model DoctorProfileEducationAndQualification {
@@ -154,18 +160,29 @@ model DoctorResearchAndPublication {
 }
 
 model File {
-  id             Int        @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   file_name      String
   file_URL       String
   file_type      String
   file_extension String
-  source         String     @default("upload") //! 'upload' or 'link'
-  soap_notes     SoapNote[]
-  created_at     DateTime   @default(now())
-  updated_at     DateTime   @updatedAt
+  source         String   @default("upload") //! "upload" or "link"
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
+<<<<<<< HEAD
   LatestLabReport LatestLabReport[]
   DoctorProfile   DoctorProfile[]
+=======
+  soap_notes        SoapNote[]
+  PreviousLabReport PreviousLabReport[]
+  LatestLabReport   LatestLabReport[]
+  DoctorProfile     DoctorProfile[]
+
+  userProfileImage User[] @relation("UserProfileImage")
+
+  doctorProfileVoices DoctorProfile[] @relation("DoctorProfileTestVoiceFile")
+  User                User[]
+>>>>>>> 795eff4dde175406451252fe7ec8623499edbdbb
 }
 
 model Otp {
@@ -247,7 +264,7 @@ model PreviousPrescription {
   user_id     Int
   user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   description String?
-  file_url    String // e.g., "/uploads/scan1.png"
+  file_url    String
   created_at  DateTime @default(now())
 }
 
