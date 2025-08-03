@@ -54,6 +54,7 @@ CREATE TABLE "public"."Role" (
 CREATE TABLE "public"."DoctorProfile" (
     "id" SERIAL NOT NULL,
     "user_id" INTEGER NOT NULL,
+    "license_number" TEXT,
     "specialization" TEXT,
     "fee" DOUBLE PRECISION,
     "rating" DOUBLE PRECISION DEFAULT 0.0,
@@ -65,6 +66,47 @@ CREATE TABLE "public"."DoctorProfile" (
     "updated_at" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "DoctorProfile_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."DoctorProfileEducationAndQualification" (
+    "id" SERIAL NOT NULL,
+    "doctor_profile_id" INTEGER NOT NULL,
+    "title" TEXT,
+    "institution" TEXT,
+    "achievement" TEXT,
+    "timeline" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "DoctorProfileEducationAndQualification_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."DoctorCertification" (
+    "id" SERIAL NOT NULL,
+    "doctor_profile_id" INTEGER NOT NULL,
+    "name" TEXT,
+    "certified_year" INTEGER,
+    "validation_year" INTEGER,
+    "institution" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "DoctorCertification_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."DoctorResearchAndPublication" (
+    "id" SERIAL NOT NULL,
+    "doctor_profile_id" INTEGER NOT NULL,
+    "research_name" TEXT,
+    "publication_year" INTEGER,
+    "published_by" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "DoctorResearchAndPublication_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -295,6 +337,15 @@ ALTER TABLE "public"."DoctorProfile" ADD CONSTRAINT "DoctorProfile_user_id_fkey"
 
 -- AddForeignKey
 ALTER TABLE "public"."DoctorProfile" ADD CONSTRAINT "DoctorProfile_image_file_id_fkey" FOREIGN KEY ("image_file_id") REFERENCES "public"."File"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."DoctorProfileEducationAndQualification" ADD CONSTRAINT "DoctorProfileEducationAndQualification_doctor_profile_id_fkey" FOREIGN KEY ("doctor_profile_id") REFERENCES "public"."DoctorProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."DoctorCertification" ADD CONSTRAINT "DoctorCertification_doctor_profile_id_fkey" FOREIGN KEY ("doctor_profile_id") REFERENCES "public"."DoctorProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."DoctorResearchAndPublication" ADD CONSTRAINT "DoctorResearchAndPublication_doctor_profile_id_fkey" FOREIGN KEY ("doctor_profile_id") REFERENCES "public"."DoctorProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."Otp" ADD CONSTRAINT "Otp_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
