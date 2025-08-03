@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
-import { UserController } from './user.controller';
 import { UserService } from './user.service';
-import { PrismaModule } from '../prisma/prisma.module'; // Adjust relative path if needed
-import { ScheduleModule } from '@nestjs/schedule';
-import { DoctorProfileModule } from './doctor/doctor-profile/doctor-profile.module';
+import { UserController } from './user.controller';
+import { PrismaModule } from '../prisma/prisma.module';
+import { FileUploadModule } from '../file-upload/file-upload.module';
 
 @Module({
-  imports: [PrismaModule, ScheduleModule, DoctorProfileModule],
+  imports: [PrismaModule, FileUploadModule],
   controllers: [UserController],
   providers: [UserService],
+  exports: [UserService],
 })
 export class UserModule {}
