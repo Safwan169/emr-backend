@@ -45,6 +45,7 @@ model User {
 
   EmergencyContact       EmergencyContact?
   previous_prescriptions PreviousPrescription[]
+  PreviousLabReport      PreviousLabReport[]
 
   created_at              DateTime                  @default(now())
   updated_at              DateTime                  @updatedAt
@@ -168,10 +169,10 @@ model File {
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 
-  soap_notes        SoapNote[]
-  PreviousLabReport PreviousLabReport[]
-  LatestLabReport   LatestLabReport[]
-  DoctorProfile     DoctorProfile[]
+  soap_notes SoapNote[]
+
+  LatestLabReport LatestLabReport[]
+  DoctorProfile   DoctorProfile[]
 
   userProfileImage User[] @relation("UserProfileImage")
 
@@ -245,10 +246,10 @@ model Prescription {
 
   LatestPrescription LatestPrescription?
 
-  created_at          DateTime           @default(now())
-  updated_at          DateTime           @updatedAt
-  PreviousLabReport   PreviousLabReport? @relation(fields: [previousLabReportId], references: [id])
-  LatestLabReport     LatestLabReport?   @relation(fields: [latestLabReportId], references: [id])
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  LatestLabReport     LatestLabReport? @relation(fields: [latestLabReportId], references: [id])
   previousLabReportId Int?
   latestLabReportId   Int?
 }
@@ -291,22 +292,17 @@ model LabReport {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  PreviousLabReport PreviousLabReport?
-  LatestLabReport   LatestLabReport?
+  LatestLabReport LatestLabReport?
 }
 
 model PreviousLabReport {
-  id Int @id @default(autoincrement())
-
-  lab_report_id Int       @unique
-  lab_report    LabReport @relation(fields: [lab_report_id], references: [id], onDelete: Cascade)
-
-  file_id Int
-  file    File @relation(fields: [file_id], references: [id], onDelete: Cascade)
-
-  created_at   DateTime       @default(now())
-  updated_at   DateTime       @updatedAt
-  Prescription Prescription[]
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  description String?
+  file_url    String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 }
 
 model LatestLabReport {
