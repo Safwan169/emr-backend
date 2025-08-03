@@ -232,8 +232,9 @@ CREATE TABLE "public"."LabReport" (
 -- CreateTable
 CREATE TABLE "public"."PreviousLabReport" (
     "id" SERIAL NOT NULL,
-    "lab_report_id" INTEGER NOT NULL,
-    "file_id" INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
+    "description" TEXT,
+    "file_url" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -318,9 +319,6 @@ CREATE UNIQUE INDEX "DoctorProfile_user_id_key" ON "public"."DoctorProfile"("use
 CREATE UNIQUE INDEX "LatestPrescription_prescription_id_key" ON "public"."LatestPrescription"("prescription_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "PreviousLabReport_lab_report_id_key" ON "public"."PreviousLabReport"("lab_report_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "LatestLabReport_lab_report_id_key" ON "public"."LatestLabReport"("lab_report_id");
 
 -- AddForeignKey
@@ -360,9 +358,6 @@ ALTER TABLE "public"."VaccineHistory" ADD CONSTRAINT "VaccineHistory_user_id_fke
 ALTER TABLE "public"."Prescription" ADD CONSTRAINT "Prescription_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."Prescription" ADD CONSTRAINT "Prescription_previousLabReportId_fkey" FOREIGN KEY ("previousLabReportId") REFERENCES "public"."PreviousLabReport"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "public"."Prescription" ADD CONSTRAINT "Prescription_latestLabReportId_fkey" FOREIGN KEY ("latestLabReportId") REFERENCES "public"."LatestLabReport"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -378,10 +373,7 @@ ALTER TABLE "public"."LatestPrescription" ADD CONSTRAINT "LatestPrescription_pre
 ALTER TABLE "public"."LabReport" ADD CONSTRAINT "LabReport_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."PreviousLabReport" ADD CONSTRAINT "PreviousLabReport_lab_report_id_fkey" FOREIGN KEY ("lab_report_id") REFERENCES "public"."LabReport"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."PreviousLabReport" ADD CONSTRAINT "PreviousLabReport_file_id_fkey" FOREIGN KEY ("file_id") REFERENCES "public"."File"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."PreviousLabReport" ADD CONSTRAINT "PreviousLabReport_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."LatestLabReport" ADD CONSTRAINT "LatestLabReport_lab_report_id_fkey" FOREIGN KEY ("lab_report_id") REFERENCES "public"."LabReport"("id") ON DELETE CASCADE ON UPDATE CASCADE;
