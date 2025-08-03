@@ -169,20 +169,15 @@ model File {
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 
-<<<<<<< HEAD
+  soap_notes SoapNote[]
+
   LatestLabReport LatestLabReport[]
   DoctorProfile   DoctorProfile[]
-=======
-  soap_notes        SoapNote[]
-  PreviousLabReport PreviousLabReport[]
-  LatestLabReport   LatestLabReport[]
-  DoctorProfile     DoctorProfile[]
 
   userProfileImage User[] @relation("UserProfileImage")
 
   doctorProfileVoices DoctorProfile[] @relation("DoctorProfileTestVoiceFile")
   User                User[]
->>>>>>> 795eff4dde175406451252fe7ec8623499edbdbb
 }
 
 model Otp {
