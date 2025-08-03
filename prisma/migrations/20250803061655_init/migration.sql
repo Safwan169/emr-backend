@@ -195,10 +195,10 @@ CREATE TABLE "public"."Prescription" (
 -- CreateTable
 CREATE TABLE "public"."PreviousPrescription" (
     "id" SERIAL NOT NULL,
-    "prescription_id" INTEGER NOT NULL,
-    "file_id" INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
+    "description" TEXT,
+    "file_url" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "PreviousPrescription_pkey" PRIMARY KEY ("id")
 );
@@ -315,9 +315,6 @@ CREATE UNIQUE INDEX "Role_role_name_key" ON "public"."Role"("role_name");
 CREATE UNIQUE INDEX "DoctorProfile_user_id_key" ON "public"."DoctorProfile"("user_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "PreviousPrescription_prescription_id_key" ON "public"."PreviousPrescription"("prescription_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "LatestPrescription_prescription_id_key" ON "public"."LatestPrescription"("prescription_id");
 
 -- CreateIndex
@@ -369,10 +366,7 @@ ALTER TABLE "public"."Prescription" ADD CONSTRAINT "Prescription_previousLabRepo
 ALTER TABLE "public"."Prescription" ADD CONSTRAINT "Prescription_latestLabReportId_fkey" FOREIGN KEY ("latestLabReportId") REFERENCES "public"."LatestLabReport"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."PreviousPrescription" ADD CONSTRAINT "PreviousPrescription_prescription_id_fkey" FOREIGN KEY ("prescription_id") REFERENCES "public"."Prescription"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."PreviousPrescription" ADD CONSTRAINT "PreviousPrescription_file_id_fkey" FOREIGN KEY ("file_id") REFERENCES "public"."File"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."PreviousPrescription" ADD CONSTRAINT "PreviousPrescription_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."LatestPrescription" ADD CONSTRAINT "LatestPrescription_prescription_id_fkey" FOREIGN KEY ("prescription_id") REFERENCES "public"."Prescription"("id") ON DELETE CASCADE ON UPDATE CASCADE;
