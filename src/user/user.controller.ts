@@ -45,10 +45,10 @@ export class UserController {
     }
   }
 
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
+  @Get(':ID')
+  async findOne(@Param('ID') ID: string) {
     try {
-      const user = await this.userService.findOne(+id);
+      const user = await this.userService.findOne(+ID);
       return successResponse(user, 'User fetched successfully');
     } catch (error) {
       return errorResponse(
@@ -58,10 +58,10 @@ export class UserController {
     }
   }
 
-  @Put(':id')
-  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  @Put(':ID')
+  async update(@Param('ID') ID: string, @Body() updateUserDto: UpdateUserDto) {
     try {
-      const updated = await this.userService.update(+id, updateUserDto);
+      const updated = await this.userService.update(+ID, updateUserDto);
       return successResponse(updated, 'User updated successfully');
     } catch (error) {
       return errorResponse(
@@ -71,11 +71,11 @@ export class UserController {
     }
   }
 
-  @Delete(':id')
+  @Delete(':ID')
   // @UseGuards(JwtAuthGuard, AdminGuard)
-  async remove(@Param('id') id: string) {
+  async remove(@Param('ID') ID: string) {
     try {
-      await this.userService.remove(+id);
+      await this.userService.remove(+ID);
       return successResponse(null, 'User deleted successfully');
     } catch (error) {
       return errorResponse(
