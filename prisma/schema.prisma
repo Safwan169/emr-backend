@@ -32,15 +32,12 @@ model User {
   height_cm   Float?
   weight_lbs  Float?
 
-  otp                  Otp[]
-  medical_history_type MedicalHistoryType[]
-  allergies            Allergy[]
-  appointments         Appointment[]        @relation("PatientAppointments")
-  doctorAppointments   Appointment[]        @relation("DoctorAppointments")
-  soap_notes           SoapNote[]           @relation("PatientSoapNotes")
-  audit_logs           AuditLog[]           @relation("UserActions")
-  Prescription         Prescription[]
-  SoapNote             SoapNote[]
+  otp          Otp[]
+  allergies    Allergy[]
+  soap_notes   SoapNote[]     @relation("PatientSoapNotes")
+  audit_logs   AuditLog[]     @relation("UserActions")
+  Prescription Prescription[]
+  SoapNote     SoapNote[]
 
   EmergencyContact EmergencyContact?
 
@@ -48,6 +45,7 @@ model User {
   updated_at         DateTime             @updatedAt
   LatestPrescription LatestPrescription[]
   LabReport          LabReport[]
+  DoctorProfile      DoctorProfile?
 
   @@unique([role_id, user_id]) // Unique user_id per role
 }
@@ -76,6 +74,79 @@ model Role {
   updated_at DateTime @updatedAt
 }
 
+model DoctorProfile {
+  id Int @id @default(autoincrement())
+
+  user_id Int  @unique
+  user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  license_number      String?
+  specialization      String?
+  fee                 Float?
+  rating              Float?  @default(0.0)
+  years_of_experience Float?
+  phone               String?
+  hospital            String?
+
+  image_file_id Int?
+  image_file    File? @relation(fields: [image_file_id], references: [id], onDelete: SetNull)
+
+  // educations DoctorProfileEducationAndQualification[] @relation("DoctorProfileToEducation")
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  DoctorCertification                    DoctorCertification[]
+  DoctorProfileEducationAndQualification DoctorProfileEducationAndQualification[]
+  DoctorResearchAndPublication           DoctorResearchAndPublication[]
+}
+
+model DoctorProfileEducationAndQualification {
+  id Int @id @default(autoincrement())
+
+  // doctor_profile_id Int
+  // doctor_profile    DoctorProfile @relation("DoctorProfileToEducation", fields: [doctor_profile_id], references: [id], onDelete: Cascade)
+  doctor_profile_id Int
+  doctor_profile    DoctorProfile @relation(fields: [doctor_profile_id], references: [id], onDelete: Cascade)
+
+  title       String?
+  institution String?
+  achievement String?
+  timeline    String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model DoctorCertification {
+  id Int @id @default(autoincrement())
+
+  doctor_profile_id Int
+  doctor_profile    DoctorProfile @relation(fields: [doctor_profile_id], references: [id], onDelete: Cascade)
+
+  name            String?
+  certified_year  Int?
+  validation_year Int?
+  institution     String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model DoctorResearchAndPublication {
+  id Int @id @default(autoincrement())
+
+  doctor_profile_id Int
+  doctor_profile    DoctorProfile @relation(fields: [doctor_profile_id], references: [id], onDelete: Cascade)
+
+  research_name    String?
+  publication_year Int?
+  published_by     String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
 model File {
   id                   Int                    @id @default(autoincrement())
   file_name            String
@@ -89,6 +160,7 @@ model File {
   PreviousPrescription PreviousPrescription[]
   PreviousLabReport    PreviousLabReport[]
   LatestLabReport      LatestLabReport[]
+  DoctorProfile        DoctorProfile[]
 }
 
 model Otp {
@@ -99,66 +171,6 @@ model Otp {
   attempts   Int      @default(0)
   user_id    Int
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-}
-
-model MedicalHistoryType {
-  id           Int    @id @default(autoincrement())
-  user_id      Int
-  user         User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  history_type String // 'current chronic condition' | 'surgical history' | 'vaccine history'
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  ChronicConditionHistory ChronicConditionHistory?
-  SurgicalHistory         SurgicalHistory?
-  VaccineHistory          VaccineHistory?
-}
-
-model ChronicConditionHistory {
-  id Int @id @default(autoincrement())
-
-  medical_history_type_id Int                @unique
-  medical_history_type    MedicalHistoryType @relation(fields: [medical_history_type_id], references: [id], onDelete: Cascade)
-
-  name               String
-  diagnosed          DateTime
-  treating_physician String
-  last_updated       DateTime
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-}
-
-model SurgicalHistory {
-  id Int @id @default(autoincrement())
-
-  medical_history_type_id Int                @unique
-  medical_history_type    MedicalHistoryType @relation(fields: [medical_history_type_id], references: [id], onDelete: Cascade)
-
-  procedure     String
-  surgery_date  DateTime
-  surgeon_name  String
-  hospital_name String
-  complications String?
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-}
-
-model VaccineHistory {
-  id Int @id @default(autoincrement())
-
-  medical_history_type_id Int                @unique
-  medical_history_type    MedicalHistoryType @relation(fields: [medical_history_type_id], references: [id], onDelete: Cascade)
-
-  vaccine_name     String
-  date             DateTime
-  dose_name        String
-  vaccine_provider String
-
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 }
@@ -219,8 +231,9 @@ model LabReport {
   user_id Int
   user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  created_at        DateTime           @default(now())
-  updated_at        DateTime           @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
   PreviousLabReport PreviousLabReport?
   LatestLabReport   LatestLabReport?
 }
@@ -279,19 +292,6 @@ enum AllergyCondition {
 enum AllergyStatus {
   active
   inactive
-}
-
-model Appointment {
-  id               Int      @id @default(autoincrement())
-  patient_id       Int
-  doctor_id        Int
-  patient          User     @relation("PatientAppointments", fields: [patient_id], references: [id], onDelete: Cascade)
-  doctor           User     @relation("DoctorAppointments", fields: [doctor_id], references: [id], onDelete: Cascade)
-  appointment_date DateTime
-  status           String
-  notes            String?
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
 }
 
 model SoapNote {

@@ -7,6 +7,7 @@ import { UserModule } from './user/user.module';
 import { FileUploadModule } from './file-upload/file-upload.module';
 import { RoleModule } from './role/role.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { DoctorProfileModule } from './user/doctor/doctor-profile/doctor-profile.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     FileUploadModule,
     RoleModule,
     ScheduleModule.forRoot(),
+    DoctorProfileModule,
   ],
   controllers: [AppController],
   providers: [AppService],
