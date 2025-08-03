@@ -43,7 +43,8 @@ model User {
   Prescription Prescription[]
   SoapNote     SoapNote[]
 
-  EmergencyContact EmergencyContact?
+  EmergencyContact       EmergencyContact?
+  previous_prescriptions PreviousPrescription[]
 
   created_at              DateTime                  @default(now())
   updated_at              DateTime                  @updatedAt
@@ -243,8 +244,7 @@ model Prescription {
   user_id Int
   user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  previous_prescription PreviousPrescription?
-  LatestPrescription    LatestPrescription?
+  LatestPrescription LatestPrescription?
 
   created_at          DateTime           @default(now())
   updated_at          DateTime           @updatedAt
@@ -255,16 +255,12 @@ model Prescription {
 }
 
 model PreviousPrescription {
-  id Int @id @default(autoincrement())
-
-  prescription_id Int          @unique
-  prescription    Prescription @relation(fields: [prescription_id], references: [id], onDelete: Cascade)
-
-  file_id Int
-  file    File @relation(fields: [file_id], references: [id], onDelete: Cascade)
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  description String?
+  file_url    String // e.g., "/uploads/scan1.png"
+  created_at  DateTime @default(now())
 }
 
 model LatestPrescription {
