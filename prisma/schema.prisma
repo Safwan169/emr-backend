@@ -258,7 +258,7 @@ model PreviousPrescription {
   user_id     Int
   user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   description String?
-  file_url    String // e.g., "/uploads/scan1.png"
+  file_url    String
   created_at  DateTime @default(now())
 }
 
