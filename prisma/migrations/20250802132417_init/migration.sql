@@ -81,10 +81,10 @@ CREATE TABLE "public"."Otp" (
 -- CreateTable
 CREATE TABLE "public"."MedicalHistoryType" (
     "id" SERIAL NOT NULL,
-    "user_id" INTEGER NOT NULL,
     "history_type" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "userId" INTEGER,
 
     CONSTRAINT "MedicalHistoryType_pkey" PRIMARY KEY ("id")
 );
@@ -93,6 +93,7 @@ CREATE TABLE "public"."MedicalHistoryType" (
 CREATE TABLE "public"."ChronicConditionHistory" (
     "id" SERIAL NOT NULL,
     "medical_history_type_id" INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
     "name" TEXT NOT NULL,
     "diagnosed" TIMESTAMP(3) NOT NULL,
     "treating_physician" TEXT NOT NULL,
@@ -107,6 +108,7 @@ CREATE TABLE "public"."ChronicConditionHistory" (
 CREATE TABLE "public"."SurgicalHistory" (
     "id" SERIAL NOT NULL,
     "medical_history_type_id" INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
     "procedure" TEXT NOT NULL,
     "surgery_date" TIMESTAMP(3) NOT NULL,
     "surgeon_name" TEXT NOT NULL,
@@ -122,6 +124,7 @@ CREATE TABLE "public"."SurgicalHistory" (
 CREATE TABLE "public"."VaccineHistory" (
     "id" SERIAL NOT NULL,
     "medical_history_type_id" INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
     "vaccine_name" TEXT NOT NULL,
     "date" TIMESTAMP(3) NOT NULL,
     "dose_name" TEXT NOT NULL,
@@ -221,20 +224,6 @@ CREATE TABLE "public"."Allergy" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."Appointment" (
-    "id" SERIAL NOT NULL,
-    "patient_id" INTEGER NOT NULL,
-    "doctor_id" INTEGER NOT NULL,
-    "appointment_date" TIMESTAMP(3) NOT NULL,
-    "status" TEXT NOT NULL,
-    "notes" TEXT,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "Appointment_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "public"."SoapNote" (
     "id" SERIAL NOT NULL,
     "patient_id" INTEGER NOT NULL,
@@ -278,15 +267,6 @@ CREATE UNIQUE INDEX "EmergencyContact_user_id_key" ON "public"."EmergencyContact
 CREATE UNIQUE INDEX "Role_role_name_key" ON "public"."Role"("role_name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ChronicConditionHistory_medical_history_type_id_key" ON "public"."ChronicConditionHistory"("medical_history_type_id");
-
--- CreateIndex
-CREATE UNIQUE INDEX "SurgicalHistory_medical_history_type_id_key" ON "public"."SurgicalHistory"("medical_history_type_id");
-
--- CreateIndex
-CREATE UNIQUE INDEX "VaccineHistory_medical_history_type_id_key" ON "public"."VaccineHistory"("medical_history_type_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "PreviousPrescription_prescription_id_key" ON "public"."PreviousPrescription"("prescription_id");
 
 -- CreateIndex
@@ -308,16 +288,25 @@ ALTER TABLE "public"."EmergencyContact" ADD CONSTRAINT "EmergencyContact_user_id
 ALTER TABLE "public"."Otp" ADD CONSTRAINT "Otp_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."MedicalHistoryType" ADD CONSTRAINT "MedicalHistoryType_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."MedicalHistoryType" ADD CONSTRAINT "MedicalHistoryType_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."ChronicConditionHistory" ADD CONSTRAINT "ChronicConditionHistory_medical_history_type_id_fkey" FOREIGN KEY ("medical_history_type_id") REFERENCES "public"."MedicalHistoryType"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."ChronicConditionHistory" ADD CONSTRAINT "ChronicConditionHistory_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."SurgicalHistory" ADD CONSTRAINT "SurgicalHistory_medical_history_type_id_fkey" FOREIGN KEY ("medical_history_type_id") REFERENCES "public"."MedicalHistoryType"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."SurgicalHistory" ADD CONSTRAINT "SurgicalHistory_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."VaccineHistory" ADD CONSTRAINT "VaccineHistory_medical_history_type_id_fkey" FOREIGN KEY ("medical_history_type_id") REFERENCES "public"."MedicalHistoryType"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."VaccineHistory" ADD CONSTRAINT "VaccineHistory_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."Prescription" ADD CONSTRAINT "Prescription_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -357,12 +346,6 @@ ALTER TABLE "public"."LatestLabReport" ADD CONSTRAINT "LatestLabReport_file_id_f
 
 -- AddForeignKey
 ALTER TABLE "public"."Allergy" ADD CONSTRAINT "Allergy_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."Appointment" ADD CONSTRAINT "Appointment_patient_id_fkey" FOREIGN KEY ("patient_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."Appointment" ADD CONSTRAINT "Appointment_doctor_id_fkey" FOREIGN KEY ("doctor_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."SoapNote" ADD CONSTRAINT "SoapNote_patient_id_fkey" FOREIGN KEY ("patient_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

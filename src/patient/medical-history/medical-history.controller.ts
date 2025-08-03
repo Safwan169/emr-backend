@@ -1,32 +1,48 @@
-// File: src/patient/medical-history.controller.ts
-
-import { Controller, Post,Get , Body, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Param,
+  Body,
+  Put,
+  Delete,
+  ParseIntPipe,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { MedicalHistoryService } from './medical-history.service';
 import { CreateChronicConditionDto } from '../dto/create-chronic-condition.dto';
+import { UpdateChronicConditionDto } from '../../patient/dto/update-chronic-condition.dto';
 
-@Controller('Patient/Medical-History')
+@Controller('Medical-history/Chronic')
 export class MedicalHistoryController {
-  constructor(private readonly medicalHistoryService: MedicalHistoryService) {}
+  constructor(private readonly service: MedicalHistoryService) {}
 
-  @Post('Chronic')
-  async createChronicCondition(@Body() dto: CreateChronicConditionDto) {
-    try {
-      const chronic = await this.medicalHistoryService.createChronicCondition(dto);
-      return {
-        message: 'Chronic condition history created successfully',
-        data: chronic,
-      };
-    } catch (error) {
-      throw new HttpException(
-        'Failed to create chronic condition history',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+  @Post(':userId')
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  create(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() dto: CreateChronicConditionDto,
+  ) {
+    return this.service.create(userId, dto);
   }
 
-   @Get('Chronic')
-  async getAllChronicConditions() {
-    return this.medicalHistoryService.getAllChronicConditions();
+  @Get(':userId')
+  getByUser(@Param('userId', ParseIntPipe) userId: number) {
+    return this.service.findByUserId(userId);
   }
 
+  @Put(':id')
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateChronicConditionDto,
+  ) {
+    return this.service.update(id, dto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.service.remove(id);
+  }
 }

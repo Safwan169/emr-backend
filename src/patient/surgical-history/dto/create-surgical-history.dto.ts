@@ -1,22 +1,20 @@
-import { IsString, IsNotEmpty, IsDateString, IsOptional, IsInt } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsDateString } from 'class-validator';
 
 export class CreateSurgicalHistoryDto {
-  @IsInt()
-  medical_history_type_id: number;
-
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   procedure: string;
 
+  @IsNotEmpty()
   @IsDateString()
   surgery_date: string;
 
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   surgeon_name: string;
 
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   hospital_name: string;
 
   @IsOptional()

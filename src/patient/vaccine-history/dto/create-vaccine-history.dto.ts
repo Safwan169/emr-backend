@@ -1,21 +1,19 @@
 import { IsNotEmpty, IsString, IsDateString } from 'class-validator';
 
-export class CreateChronicConditionDto {
+export class CreateVaccineHistoryDto {
   @IsNotEmpty()
   @IsString()
-  name: string;
+  vaccine_name: string;
 
   @IsNotEmpty()
   @IsDateString()
-  diagnosed: string;
+  date: string;
 
   @IsNotEmpty()
   @IsString()
-  treating_physician: string;
+  dose_name: string;
 
   @IsNotEmpty()
-  @IsDateString()
-  last_updated: string;
+  @IsString()
+  vaccine_provider: string;
 }
-
-

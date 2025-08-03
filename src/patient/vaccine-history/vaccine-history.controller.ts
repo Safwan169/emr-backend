@@ -10,19 +10,19 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { SurgicalHistoryService } from './surgical-history.service';
-import { CreateSurgicalHistoryDto } from './dto/create-surgical-history.dto';
-import { UpdateSurgicalHistoryDto } from './dto/update-surgical-history.dto';
+import { VaccineHistoryService } from './vaccine-history.service';
+import { CreateVaccineHistoryDto } from './dto/create-vaccine-history.dto';
+import { UpdateVaccineHistoryDto } from './dto/update-vaccine-history.dto';
 
-@Controller('Medical-history/Surgical')
-export class SurgicalHistoryController {
-  constructor(private readonly service: SurgicalHistoryService) {}
+@Controller('Medical-history/Vaccine')
+export class VaccineHistoryController {
+  constructor(private readonly service: VaccineHistoryService) {}
 
   @Post(':user_id')
   @UsePipes(new ValidationPipe())
   create(
     @Param('user_id', ParseIntPipe) user_id: number,
-    @Body() dto: CreateSurgicalHistoryDto,
+    @Body() dto: CreateVaccineHistoryDto,
   ) {
     return this.service.create(user_id, dto);
   }
@@ -34,7 +34,7 @@ export class SurgicalHistoryController {
 
   @Put(':id')
   @UsePipes(new ValidationPipe())
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSurgicalHistoryDto) {
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateVaccineHistoryDto) {
     return this.service.update(id, dto);
   }
 
