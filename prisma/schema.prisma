@@ -22,7 +22,6 @@ model User {
   password_hashed String
   date_of_birth   DateTime
   gender          String
-  address         String?
 
   role_id Int
   role    Role @relation(fields: [role_id], references: [id], onDelete: Cascade)
@@ -30,10 +29,13 @@ model User {
   profile_image_id Int?
   profile_image    File? @relation("UserProfileImage", fields: [profile_image_id], references: [id], onDelete: SetNull)
 
-  age         String?
-  blood_group String?
-  height_cm   Float?
-  weight_lbs  Float?
+  age          String?
+  blood_group  String?
+  height_cm    Float?
+  weight_lbs   Float?
+  address      String?
+  country      String?
+  phone_number String?
 
   otp Otp[]
 
