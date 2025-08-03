@@ -11,9 +11,26 @@ import { JwtService } from '@nestjs/jwt';
 import { EmailService } from './email.service';
 import * as bcrypt from 'bcrypt';
 
+interface PendingRegistration {
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
+  date_of_birth: string;
+  gender: string;
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+
+  // For registration OTP: store OTP + user data keyed by email
+  private pendingRegistrations = new Map<
+    string,
+    { otpCode: string; expiresAt: Date; registrationData: PendingRegistration }
+  >();
+
+  // For login OTP pending email (only one at a time for simplicity)
   private pendingLoginEmail: string | null = null;
 
   constructor(
@@ -22,42 +39,84 @@ export class AuthService {
     private emailService: EmailService,
   ) {}
 
-  async register(userData: {
-    first_name: string;
-    last_name: string;
-    email: string;
-    password: string;
-    date_of_birth: string;
-    gender: string;
-  }) {
-    const { first_name, last_name, email, password, date_of_birth, gender } =
-      userData;
+  // --- Registration OTP Step 1 ---
+  async sendOtpForRegistration(userData: PendingRegistration) {
+    const { email } = userData;
 
-    this.logger.log(`📋 Attempting to register user with email: ${email}`);
+    this.logger.log(`📋 Sending OTP for registration email: ${email}`);
 
-    // 1. Check if email is already taken
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
     if (existingUser) {
-      this.logger.warn(
-        `🛑 Registration failed: User with email ${email} already exists`,
-      );
+      this.logger.warn(`🛑 Registration failed: User already exists: ${email}`);
       throw new BadRequestException('User with this email already exists');
     }
 
-    const roleName = 'patient';
-
-    // 2. Get or create role
-    let role = await this.prisma.role.findUnique({
-      where: { role_name: roleName },
-    });
-    if (!role) {
-      role = await this.prisma.role.create({ data: { role_name: roleName } });
-      this.logger.log(`✏️ Role '${roleName}' created`);
+    const existingOtpEntry = this.pendingRegistrations.get(email);
+    if (existingOtpEntry && existingOtpEntry.expiresAt > new Date()) {
+      this.logger.warn(
+        `🚫 OTP send throttled for registration email: ${email}`,
+      );
+      throw new HttpException(
+        'Please wait before requesting a new OTP.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
 
-    // 3. Generate next user_id based on role
+    const otpCode = this.generateOTP();
+    const expiresAt = new Date(Date.now() + 2 * 60 * 1000); // 2 min expiry
+
+    this.pendingRegistrations.set(email, {
+      otpCode,
+      expiresAt,
+      registrationData: userData,
+    });
+
+    await this.emailService.sendOtpEmail(email, otpCode);
+
+    this.logger.log(`✅ OTP sent for registration email: ${email}`);
+
+    return {
+      message:
+        'OTP sent to your email. Please verify to complete registration.',
+      email_hint: this.maskEmail(email),
+    };
+  }
+
+  // --- Registration OTP Step 2: verify OTP + create user ---
+  async verifyOtpAndRegister(email: string, otp: string) {
+    this.logger.log(`📋 Verifying OTP for registration email: ${email}`);
+
+    const otpEntry = this.pendingRegistrations.get(email);
+    if (!otpEntry) {
+      this.logger.warn(`🛑 No pending registration found for email: ${email}`);
+      throw new BadRequestException(
+        'No pending registration found for this email.',
+      );
+    }
+    if (otpEntry.expiresAt < new Date()) {
+      this.pendingRegistrations.delete(email);
+      this.logger.warn(`🛑 OTP expired for registration email: ${email}`);
+      throw new BadRequestException('OTP expired. Please request a new one.');
+    }
+    if (otpEntry.otpCode !== otp) {
+      this.logger.warn(`🚫 Invalid OTP for registration email: ${email}`);
+      throw new BadRequestException('Invalid OTP.');
+    }
+
+    // OTP valid → create user
+    const { first_name, last_name, password, date_of_birth, gender } =
+      otpEntry.registrationData;
+
+    let role = await this.prisma.role.findUnique({
+      where: { role_name: 'patient' },
+    });
+    if (!role) {
+      role = await this.prisma.role.create({ data: { role_name: 'patient' } });
+      this.logger.log(`✏️ Role 'patient' created`);
+    }
+
     const lastUser = await this.prisma.user.findFirst({
       where: { role_id: role.id },
       orderBy: { user_id: 'desc' },
@@ -65,10 +124,11 @@ export class AuthService {
     });
     const user_id = (lastUser?.user_id || 0) + 1;
 
-    // 4. Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 5. Create user
+    const dobDate = new Date(date_of_birth);
+    const age = this.calculateFormattedAge(dobDate);
+
     const user = await this.prisma.user.create({
       data: {
         user_id,
@@ -76,12 +136,15 @@ export class AuthService {
         last_name,
         email,
         password_hashed: hashedPassword,
-        date_of_birth: new Date(date_of_birth),
+        date_of_birth: dobDate,
         gender,
-        role: { connect: { role_name: roleName } },
+        age,
+        role: { connect: { role_name: 'patient' } },
       },
       include: { role: true },
     });
+
+    this.pendingRegistrations.delete(email);
 
     this.logger.log(`✅ User registered successfully with email: ${email}`);
 
@@ -91,6 +154,7 @@ export class AuthService {
     };
   }
 
+  // --- Login with password + send OTP ---
   async login(dto: { email: string; password: string }) {
     this.logger.log(`📋 Login attempt for email: ${dto.email}`);
 
@@ -157,6 +221,7 @@ export class AuthService {
     };
   }
 
+  // --- Verify OTP for login (manual login flow) ---
   async verifyOtp(otpCode: string) {
     if (!this.pendingLoginEmail) {
       this.logger.warn(`🛑 OTP verification failed: No pending login`);
@@ -212,9 +277,7 @@ export class AuthService {
         data: { attempts: otpRecord.attempts + 1 },
       });
       this.logger.warn(
-        `🚫 Invalid OTP entered for user ID ${user.id}. Attempts left: ${
-          2 - otpRecord.attempts
-        }`,
+        `🚫 Invalid OTP entered for user ID ${user.id}. Attempts left: ${2 - otpRecord.attempts}`,
       );
       throw new BadRequestException(
         `Invalid OTP. ${2 - otpRecord.attempts} attempts remaining.`,
@@ -247,6 +310,7 @@ export class AuthService {
     };
   }
 
+  // --- Resend OTP for login ---
   async resendOtp() {
     if (!this.pendingLoginEmail) {
       this.logger.warn(`🛑 Resend OTP failed: No pending login`);
@@ -316,10 +380,23 @@ export class AuthService {
     return `${maskedLocal}@${domain}`;
   }
 
+  private calculateFormattedAge(dob: Date): string {
+    const now = new Date();
+    let years = now.getFullYear() - dob.getFullYear();
+    let months = now.getMonth() - dob.getMonth();
+
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    return `${years} year${years !== 1 ? 's' : ''} ${months} month${months !== 1 ? 's' : ''}`;
+  }
+
   private formatUser(user: any) {
     return {
-      id: user.id, // global unique user ID
-      user_id: user.user_id, // role-specific serial number
+      id: user.id,
+      user_id: user.user_id,
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,
@@ -327,6 +404,7 @@ export class AuthService {
         ? user.date_of_birth.toISOString().split('T')[0]
         : null,
       gender: user.gender,
+      age: user.age,
       role: user.role
         ? {
             id: user.role.id,

@@ -49,6 +49,7 @@ model User {
   ChronicConditionHistory ChronicConditionHistory[]
   SurgicalHistory         SurgicalHistory[]
   VaccineHistory          VaccineHistory[]
+  DoctorProfile           DoctorProfile?
 
   @@unique([role_id, user_id]) // Unique user_id per role
 }
@@ -77,6 +78,79 @@ model Role {
   updated_at DateTime @updatedAt
 }
 
+model DoctorProfile {
+  id Int @id @default(autoincrement())
+
+  user_id Int  @unique
+  user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  license_number      String?
+  specialization      String?
+  fee                 Float?
+  rating              Float?  @default(0.0)
+  years_of_experience Float?
+  phone               String?
+  hospital            String?
+
+  image_file_id Int?
+  image_file    File? @relation(fields: [image_file_id], references: [id], onDelete: SetNull)
+
+  // educations DoctorProfileEducationAndQualification[] @relation("DoctorProfileToEducation")
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  DoctorCertification                    DoctorCertification[]
+  DoctorProfileEducationAndQualification DoctorProfileEducationAndQualification[]
+  DoctorResearchAndPublication           DoctorResearchAndPublication[]
+}
+
+model DoctorProfileEducationAndQualification {
+  id Int @id @default(autoincrement())
+
+  // doctor_profile_id Int
+  // doctor_profile    DoctorProfile @relation("DoctorProfileToEducation", fields: [doctor_profile_id], references: [id], onDelete: Cascade)
+  doctor_profile_id Int
+  doctor_profile    DoctorProfile @relation(fields: [doctor_profile_id], references: [id], onDelete: Cascade)
+
+  title       String?
+  institution String?
+  achievement String?
+  timeline    String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model DoctorCertification {
+  id Int @id @default(autoincrement())
+
+  doctor_profile_id Int
+  doctor_profile    DoctorProfile @relation(fields: [doctor_profile_id], references: [id], onDelete: Cascade)
+
+  name            String?
+  certified_year  Int?
+  validation_year Int?
+  institution     String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model DoctorResearchAndPublication {
+  id Int @id @default(autoincrement())
+
+  doctor_profile_id Int
+  doctor_profile    DoctorProfile @relation(fields: [doctor_profile_id], references: [id], onDelete: Cascade)
+
+  research_name    String?
+  publication_year Int?
+  published_by     String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
 model File {
   id                   Int                    @id @default(autoincrement())
   file_name            String
@@ -90,6 +164,7 @@ model File {
   PreviousPrescription PreviousPrescription[]
   PreviousLabReport    PreviousLabReport[]
   LatestLabReport      LatestLabReport[]
+  DoctorProfile        DoctorProfile[]
 }
 
 model Otp {
@@ -206,8 +281,9 @@ model LabReport {
   user_id Int
   user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  created_at        DateTime           @default(now())
-  updated_at        DateTime           @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
   PreviousLabReport PreviousLabReport?
   LatestLabReport   LatestLabReport?
 }
