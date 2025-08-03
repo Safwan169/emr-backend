@@ -8,9 +8,11 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import { FileUploadService } from '../file-upload/file-upload.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Cron } from '@nestjs/schedule';
+import { unlink } from 'fs/promises';
 
 @Injectable()
 export class UserService implements OnModuleInit {
@@ -20,7 +22,10 @@ export class UserService implements OnModuleInit {
   private readonly SUPER_ADMIN_ROLE_NAME = 'super admin';
   private readonly DEFAULT_SUPER_ADMIN_PASSWORD = '12345678';
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fileUploadService: FileUploadService,
+  ) {}
 
   async onModuleInit() {
     const roleName = this.SUPER_ADMIN_ROLE_NAME.toLowerCase();
@@ -136,7 +141,11 @@ export class UserService implements OnModuleInit {
         age,
         role: { connect: { id: role_id } },
       },
-      include: { role: true, EmergencyContact: true },
+      include: {
+        role: true,
+        EmergencyContact: true,
+        profile_image: true,
+      },
     });
 
     this.logger.log(
@@ -161,7 +170,11 @@ export class UserService implements OnModuleInit {
   async findAll() {
     this.logger.log('📋 Fetching all users...');
     const users = await this.prisma.user.findMany({
-      include: { role: true, EmergencyContact: true },
+      include: {
+        role: true,
+        EmergencyContact: true,
+        profile_image: true,
+      },
       orderBy: { created_at: 'desc' },
     });
     return users.map(this.formatUser);
@@ -170,7 +183,11 @@ export class UserService implements OnModuleInit {
   async findOne(id: number) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      include: { role: true, EmergencyContact: true },
+      include: {
+        role: true,
+        EmergencyContact: true,
+        profile_image: true,
+      },
     });
 
     if (!user) {
@@ -182,10 +199,17 @@ export class UserService implements OnModuleInit {
     return this.formatUser(user);
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto) {
+  async update(
+    id: number,
+    updateUserDto: UpdateUserDto,
+    profileImageFile?: Express.Multer.File,
+  ) {
     const existingUser = await this.prisma.user.findUnique({
       where: { id },
-      include: { EmergencyContact: true },
+      include: {
+        EmergencyContact: true,
+        profile_image: true,
+      },
     });
 
     if (!existingUser) {
@@ -212,9 +236,76 @@ export class UserService implements OnModuleInit {
     // 📅 DATE OF BIRTH & AGE HANDLING
     // ═══════════════════════════════════════════════════════════════════════
     if (data.date_of_birth) {
-      // Convert string to Date object
       data.date_of_birth = new Date(data.date_of_birth);
       data.age = this.calculateAge(data.date_of_birth);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🖼️ PROFILE IMAGE HANDLING
+    // ═══════════════════════════════════════════════════════════════════════
+    if (profileImageFile) {
+      // Delete old profile image if exists
+      if (existingUser.profile_image) {
+        if (existingUser.profile_image.source === 'upload') {
+          const filePath = `./uploads/${existingUser.profile_image.file_URL.split('/').pop()}`;
+          try {
+            await unlink(filePath);
+            this.logger.log(
+              `🗑️ Deleted old profile image from disk for userId=${id}`,
+            );
+          } catch (err) {
+            this.logger.warn(
+              `⚠️ Profile image delete error for userId=${id}: ${err.message}`,
+            );
+          }
+        }
+        await this.prisma.file.delete({
+          where: { id: existingUser.profile_image.id },
+        });
+        this.logger.log(`🗑️ Deleted old profile image record for userId=${id}`);
+      }
+
+      // Upload new profile image
+      const uploadedImage =
+        await this.fileUploadService.handleUpload(profileImageFile);
+      data.profile_image = { connect: { id: uploadedImage.id } };
+      this.logger.log(
+        `⬆️ Uploaded new profile image id=${uploadedImage.id} for userId=${id}`,
+      );
+    }
+
+    // Handle external image URL if provided in DTO
+    if ((data as any).profile_image_url && !profileImageFile) {
+      // Delete old profile image if exists
+      if (existingUser.profile_image) {
+        if (existingUser.profile_image.source === 'upload') {
+          const filePath = `./uploads/${existingUser.profile_image.file_URL.split('/').pop()}`;
+          try {
+            await unlink(filePath);
+            this.logger.log(
+              `🗑️ Deleted old profile image from disk for userId=${id}`,
+            );
+          } catch (err) {
+            this.logger.warn(
+              `⚠️ Profile image delete error for userId=${id}: ${err.message}`,
+            );
+          }
+        }
+        await this.prisma.file.delete({
+          where: { id: existingUser.profile_image.id },
+        });
+        this.logger.log(`🗑️ Deleted old profile image record for userId=${id}`);
+      }
+
+      // Link external image
+      const externalImage = await this.fileUploadService.handleExternalLink(
+        (data as any).profile_image_url,
+      );
+      data.profile_image = { connect: { id: externalImage.id } };
+      delete (data as any).profile_image_url;
+      this.logger.log(
+        `🔗 Linked external profile image id=${externalImage.id} for userId=${id}`,
+      );
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -229,7 +320,11 @@ export class UserService implements OnModuleInit {
     const updatedUser = await this.prisma.user.update({
       where: { id },
       data,
-      include: { role: true, EmergencyContact: true },
+      include: {
+        role: true,
+        EmergencyContact: true,
+        profile_image: true,
+      },
     });
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -249,21 +344,28 @@ export class UserService implements OnModuleInit {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 📤 RETURN UPDATED USER WITH CONTACT
+    // 📤 RETURN UPDATED USER WITH CONTACT & IMAGE
     // ═══════════════════════════════════════════════════════════════════════
-    const userWithContact = await this.prisma.user.findUnique({
+    const userWithContactAndImage = await this.prisma.user.findUnique({
       where: { id },
-      include: { role: true, EmergencyContact: true },
+      include: {
+        role: true,
+        EmergencyContact: true,
+        profile_image: true,
+      },
     });
 
     this.logger.log(`✏️ Updated user ID: ${id}`);
-    return this.formatUser(userWithContact);
+    return this.formatUser(userWithContactAndImage);
   }
 
   async remove(id: number) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      include: { role: true },
+      include: {
+        role: true,
+        profile_image: true,
+      },
     });
 
     if (!user) {
@@ -274,6 +376,19 @@ export class UserService implements OnModuleInit {
     if (user.role.role_name.toLowerCase() === this.SUPER_ADMIN_ROLE_NAME) {
       this.logger.warn(`🚫 Cannot delete Super Admin: ID ${id}`);
       throw new ConflictException('Super Admin user cannot be deleted');
+    }
+
+    // Delete profile image file if exists
+    if (user.profile_image && user.profile_image.source === 'upload') {
+      const filePath = `./uploads/${user.profile_image.file_URL.split('/').pop()}`;
+      try {
+        await unlink(filePath);
+        this.logger.log(`🗑️ Deleted profile image from disk for userId=${id}`);
+      } catch (err) {
+        this.logger.warn(
+          `⚠️ Profile image delete error for userId=${id}: ${err.message}`,
+        );
+      }
     }
 
     await this.prisma.user.delete({ where: { id } });
@@ -302,11 +417,27 @@ export class UserService implements OnModuleInit {
         : null,
 
       // ═══════════════════════════════════════════════════════════════════════
+      // 🖼️ PROFILE IMAGE
+      // ═══════════════════════════════════════════════════════════════════════
+      profile_image: user.profile_image
+        ? {
+            id: user.profile_image.id,
+            file_name: user.profile_image.file_name,
+            file_URL: user.profile_image.file_URL,
+            file_type: user.profile_image.file_type,
+            source: user.profile_image.source,
+          }
+        : null,
+
+      // ═══════════════════════════════════════════════════════════════════════
       // 🏥 MEDICAL INFORMATION
       // ═══════════════════════════════════════════════════════════════════════
       blood_group: user.blood_group,
       height_cm: user.height_cm,
       weight_lbs: user.weight_lbs,
+      temperature: user.temperature,
+      blood_pressure: user.blood_pressure,
+      heart_bit_rate: user.heart_bit_rate,
 
       // ═══════════════════════════════════════════════════════════════════════
       // 📍 CONTACT & LOCATION

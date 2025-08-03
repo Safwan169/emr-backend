@@ -29,13 +29,16 @@ model User {
   profile_image_id Int?
   profile_image    File? @relation("UserProfileImage", fields: [profile_image_id], references: [id], onDelete: SetNull)
 
-  age          String?
-  blood_group  String?
-  height_cm    Float?
-  weight_lbs   Float?
-  address      String?
-  country      String?
-  phone_number String?
+  age            String?
+  blood_group    String?
+  height_cm      Float?
+  weight_lbs     Float?
+  address        String?
+  country        String?
+  phone_number   String?
+  temperature    String?
+  blood_pressure String?
+  heart_bit_rate String?
 
   otp Otp[]
 

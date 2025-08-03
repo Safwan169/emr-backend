@@ -3,7 +3,9 @@ import {
   IsString,
   IsEmail,
   IsDateString,
+  IsNumber,
   ValidateNested,
+  IsUrl,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -35,6 +37,14 @@ export class UpdateUserDto {
   last_name?: string;
 
   @IsOptional()
+  @IsString()
+  gender?: string;
+
+  @IsOptional()
+  @IsDateString()
+  date_of_birth?: string;
+
+  @IsOptional()
   @IsEmail()
   email?: string;
 
@@ -43,22 +53,32 @@ export class UpdateUserDto {
   password?: string;
 
   @IsOptional()
-  @IsDateString()
-  date_of_birth?: string;
-
-  @IsOptional()
-  @IsString()
-  gender?: string;
+  @IsUrl()
+  profile_image_url?: string;
 
   @IsOptional()
   @IsString()
   blood_group?: string;
 
   @IsOptional()
+  @IsNumber()
   height_cm?: number;
 
   @IsOptional()
+  @IsNumber()
   weight_lbs?: number;
+
+  @IsOptional()
+  @IsString()
+  temperature?: string;
+
+  @IsOptional()
+  @IsString()
+  blood_pressure?: string;
+
+  @IsOptional()
+  @IsString()
+  heart_bit_rate?: string;
 
   @IsOptional()
   @IsString()
@@ -66,11 +86,11 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
-  country?: string;
+  address?: string;
 
   @IsOptional()
   @IsString()
-  address?: string;
+  country?: string;
 
   @IsOptional()
   @ValidateNested()
