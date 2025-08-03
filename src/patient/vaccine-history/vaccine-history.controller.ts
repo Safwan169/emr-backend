@@ -14,7 +14,7 @@ import { VaccineHistoryService } from './vaccine-history.service';
 import { CreateVaccineHistoryDto } from './dto/create-vaccine-history.dto';
 import { UpdateVaccineHistoryDto } from './dto/update-vaccine-history.dto';
 
-@Controller('Medical-history/Vaccine')
+@Controller('MedicalHistory/Vaccine')
 export class VaccineHistoryController {
   constructor(private readonly service: VaccineHistoryService) {}
 

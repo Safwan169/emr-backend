@@ -14,7 +14,7 @@ import { SurgicalHistoryService } from './surgical-history.service';
 import { CreateSurgicalHistoryDto } from './dto/create-surgical-history.dto';
 import { UpdateSurgicalHistoryDto } from './dto/update-surgical-history.dto';
 
-@Controller('Medical-history/Surgical')
+@Controller('MedicalHistory/Surgical')
 export class SurgicalHistoryController {
   constructor(private readonly service: SurgicalHistoryService) {}
 
