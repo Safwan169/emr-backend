@@ -16,7 +16,7 @@ import { Cron } from '@nestjs/schedule';
 export class UserService implements OnModuleInit {
   private readonly logger = new Logger(UserService.name);
 
-  private readonly SUPER_ADMIN_EMAIL = 'fibbitto06@gmail.com';
+  private readonly SUPER_ADMIN_EMAIL = 'koushik101517@gmail.com';
   private readonly SUPER_ADMIN_ROLE_NAME = 'super admin';
   private readonly DEFAULT_SUPER_ADMIN_PASSWORD = '12345678';
 

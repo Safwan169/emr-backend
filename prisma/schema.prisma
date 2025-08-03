@@ -32,7 +32,8 @@ model User {
   height_cm   Float?
   weight_lbs  Float?
 
-  otp          Otp[]
+  otp Otp[]
+
   allergies    Allergy[]
   soap_notes   SoapNote[]     @relation("PatientSoapNotes")
   audit_logs   AuditLog[]     @relation("UserActions")
@@ -41,11 +42,14 @@ model User {
 
   EmergencyContact EmergencyContact?
 
-  created_at         DateTime             @default(now())
-  updated_at         DateTime             @updatedAt
-  LatestPrescription LatestPrescription[]
-  LabReport          LabReport[]
-  DoctorProfile      DoctorProfile?
+  created_at              DateTime                  @default(now())
+  updated_at              DateTime                  @updatedAt
+  LatestPrescription      LatestPrescription[]
+  LabReport               LabReport[]
+  ChronicConditionHistory ChronicConditionHistory[]
+  SurgicalHistory         SurgicalHistory[]
+  VaccineHistory          VaccineHistory[]
+  DoctorProfile           DoctorProfile?
 
   @@unique([role_id, user_id]) // Unique user_id per role
 }
@@ -171,6 +175,52 @@ model Otp {
   attempts   Int      @default(0)
   user_id    Int
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model ChronicConditionHistory {
+  id Int @id @default(autoincrement())
+
+  user_id Int
+  user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  name               String
+  diagnosed          DateTime
+  treating_physician String
+  last_updated       DateTime
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model SurgicalHistory {
+  id Int @id @default(autoincrement())
+
+  user_id Int
+  user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  procedure     String
+  surgery_date  DateTime
+  surgeon_name  String
+  hospital_name String
+  complications String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model VaccineHistory {
+  id Int @id @default(autoincrement())
+
+  user_id Int
+  user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  vaccine_name     String
+  date             DateTime
+  dose_name        String
+  vaccine_provider String
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 }
