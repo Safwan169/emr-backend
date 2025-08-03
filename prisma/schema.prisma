@@ -168,11 +168,10 @@ model File {
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 
-  soap_notes           SoapNote[]
-  PreviousPrescription PreviousPrescription[]
-  PreviousLabReport    PreviousLabReport[]
-  LatestLabReport      LatestLabReport[]
-  DoctorProfile        DoctorProfile[]
+  soap_notes        SoapNote[]
+  PreviousLabReport PreviousLabReport[]
+  LatestLabReport   LatestLabReport[]
+  DoctorProfile     DoctorProfile[]
 
   userProfileImage User[] @relation("UserProfileImage")
 
