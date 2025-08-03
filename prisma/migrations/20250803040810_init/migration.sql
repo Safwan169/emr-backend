@@ -138,25 +138,8 @@ CREATE TABLE "public"."Otp" (
 );
 
 -- CreateTable
-<<<<<<<< HEAD:prisma/migrations/20250802132417_init/migration.sql
-CREATE TABLE "public"."MedicalHistoryType" (
-    "id" SERIAL NOT NULL,
-    "history_type" TEXT NOT NULL,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
-    "userId" INTEGER,
-
-    CONSTRAINT "MedicalHistoryType_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "public"."ChronicConditionHistory" (
     "id" SERIAL NOT NULL,
-    "medical_history_type_id" INTEGER NOT NULL,
-========
-CREATE TABLE "public"."ChronicConditionHistory" (
-    "id" SERIAL NOT NULL,
->>>>>>>> 8170667a0ee2643dbb53f3dc1078b9970ceaadca:prisma/migrations/20250803012923_init/migration.sql
     "user_id" INTEGER NOT NULL,
     "name" TEXT NOT NULL,
     "diagnosed" TIMESTAMP(3) NOT NULL,
@@ -171,10 +154,6 @@ CREATE TABLE "public"."ChronicConditionHistory" (
 -- CreateTable
 CREATE TABLE "public"."SurgicalHistory" (
     "id" SERIAL NOT NULL,
-<<<<<<<< HEAD:prisma/migrations/20250802132417_init/migration.sql
-    "medical_history_type_id" INTEGER NOT NULL,
-========
->>>>>>>> 8170667a0ee2643dbb53f3dc1078b9970ceaadca:prisma/migrations/20250803012923_init/migration.sql
     "user_id" INTEGER NOT NULL,
     "procedure" TEXT NOT NULL,
     "surgery_date" TIMESTAMP(3) NOT NULL,
@@ -190,10 +169,6 @@ CREATE TABLE "public"."SurgicalHistory" (
 -- CreateTable
 CREATE TABLE "public"."VaccineHistory" (
     "id" SERIAL NOT NULL,
-<<<<<<<< HEAD:prisma/migrations/20250802132417_init/migration.sql
-    "medical_history_type_id" INTEGER NOT NULL,
-========
->>>>>>>> 8170667a0ee2643dbb53f3dc1078b9970ceaadca:prisma/migrations/20250803012923_init/migration.sql
     "user_id" INTEGER NOT NULL,
     "vaccine_name" TEXT NOT NULL,
     "date" TIMESTAMP(3) NOT NULL,
@@ -337,12 +312,9 @@ CREATE UNIQUE INDEX "EmergencyContact_user_id_key" ON "public"."EmergencyContact
 CREATE UNIQUE INDEX "Role_role_name_key" ON "public"."Role"("role_name");
 
 -- CreateIndex
-<<<<<<<< HEAD:prisma/migrations/20250802132417_init/migration.sql
-========
 CREATE UNIQUE INDEX "DoctorProfile_user_id_key" ON "public"."DoctorProfile"("user_id");
 
 -- CreateIndex
->>>>>>>> 8170667a0ee2643dbb53f3dc1078b9970ceaadca:prisma/migrations/20250803012923_init/migration.sql
 CREATE UNIQUE INDEX "PreviousPrescription_prescription_id_key" ON "public"."PreviousPrescription"("prescription_id");
 
 -- CreateIndex
@@ -379,30 +351,10 @@ ALTER TABLE "public"."DoctorResearchAndPublication" ADD CONSTRAINT "DoctorResear
 ALTER TABLE "public"."Otp" ADD CONSTRAINT "Otp_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-<<<<<<<< HEAD:prisma/migrations/20250802132417_init/migration.sql
-ALTER TABLE "public"."MedicalHistoryType" ADD CONSTRAINT "MedicalHistoryType_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-========
-ALTER TABLE "public"."ChronicConditionHistory" ADD CONSTRAINT "ChronicConditionHistory_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
->>>>>>>> 8170667a0ee2643dbb53f3dc1078b9970ceaadca:prisma/migrations/20250803012923_init/migration.sql
-
--- AddForeignKey
-ALTER TABLE "public"."SurgicalHistory" ADD CONSTRAINT "SurgicalHistory_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-<<<<<<<< HEAD:prisma/migrations/20250802132417_init/migration.sql
 ALTER TABLE "public"."ChronicConditionHistory" ADD CONSTRAINT "ChronicConditionHistory_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."SurgicalHistory" ADD CONSTRAINT "SurgicalHistory_medical_history_type_id_fkey" FOREIGN KEY ("medical_history_type_id") REFERENCES "public"."MedicalHistoryType"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "public"."SurgicalHistory" ADD CONSTRAINT "SurgicalHistory_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."VaccineHistory" ADD CONSTRAINT "VaccineHistory_medical_history_type_id_fkey" FOREIGN KEY ("medical_history_type_id") REFERENCES "public"."MedicalHistoryType"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-========
-ALTER TABLE "public"."VaccineHistory" ADD CONSTRAINT "VaccineHistory_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
->>>>>>>> 8170667a0ee2643dbb53f3dc1078b9970ceaadca:prisma/migrations/20250803012923_init/migration.sql
 
 -- AddForeignKey
 ALTER TABLE "public"."VaccineHistory" ADD CONSTRAINT "VaccineHistory_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
