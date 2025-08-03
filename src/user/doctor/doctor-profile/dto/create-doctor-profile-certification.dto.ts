@@ -2,6 +2,10 @@ import { IsOptional, IsString, IsInt } from 'class-validator';
 
 export class CreateDoctorCertificationDto {
   @IsOptional()
+  @IsInt()
+  id?: number;
+
+  @IsOptional()
   @IsString()
   name?: string;
 
