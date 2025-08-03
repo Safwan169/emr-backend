@@ -18,6 +18,7 @@ import { UserService } from './user.service';
 import { successResponse, errorResponse } from '../common/response.handler';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { AdminGuard } from 'src/auth/guards/admin.guard';
+import { UpdateEmergencyContactDto } from './dto/emergency-contact.dto';
 
 @Controller('Users')
 export class UserController {
@@ -115,6 +116,78 @@ export class UserController {
       );
     }
   }
+
+  //=============================================================================================================================
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔍 GET EMERGENCY CONTACT BY USER ID
+  // ═══════════════════════════════════════════════════════════════════════════
+  @Get(':ID/emergency-contact')
+  async getEmergencyContact(@Param('ID') ID: string) {
+    try {
+      const emergencyContact = await this.userService.getEmergencyContact(+ID);
+      return successResponse(
+        emergencyContact,
+        `🔍 Emergency contact retrieved successfully`,
+      );
+    } catch (error) {
+      return errorResponse(
+        error.message ||
+          `❌ Failed to fetch emergency contact for user ID: ${ID}`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ✏️ UPDATE/CREATE EMERGENCY CONTACT (UPSERT)
+  // ═══════════════════════════════════════════════════════════════════════════
+  @Put(':ID/emergency-contact')
+  async updateEmergencyContact(
+    @Param('ID') ID: string,
+    @Body() updateEmergencyContactDto: UpdateEmergencyContactDto,
+  ) {
+    try {
+      const updatedEmergencyContact =
+        await this.userService.updateEmergencyContact(
+          +ID,
+          updateEmergencyContactDto,
+        );
+
+      return successResponse(
+        updatedEmergencyContact,
+        `✅ Emergency contact updated successfully for user ID: ${ID}`,
+      );
+    } catch (error) {
+      return errorResponse(
+        error.message ||
+          `❌ Failed to update emergency contact for user ID: ${ID}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🗑️ DELETE EMERGENCY CONTACT
+  // ═══════════════════════════════════════════════════════════════════════════
+  @Delete(':ID/emergency-contact')
+  async deleteEmergencyContact(@Param('ID') ID: string) {
+    try {
+      await this.userService.deleteEmergencyContact(+ID);
+      return successResponse(
+        null,
+        `🗑️ Emergency contact deleted successfully for user ID: ${ID}`,
+      );
+    } catch (error) {
+      return errorResponse(
+        error.message ||
+          `❌ Failed to delete emergency contact for user ID: ${ID}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  //=============================================================================================================================
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 🗑️ DELETE USER

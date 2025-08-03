@@ -13,6 +13,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Cron } from '@nestjs/schedule';
 import { unlink } from 'fs/promises';
+import { UpdateEmergencyContactDto } from './dto/emergency-contact.dto';
 
 @Injectable()
 export class UserService implements OnModuleInit {
@@ -359,6 +360,151 @@ export class UserService implements OnModuleInit {
     return this.formatUser(userWithContactAndImage);
   }
 
+  //==================================================================================================================================
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🚨 GET EMERGENCY CONTACT BY USER ID
+  // ═══════════════════════════════════════════════════════════════════════════
+  async getEmergencyContact(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        EmergencyContact: true,
+      },
+    });
+
+    if (!user) {
+      this.logger.warn(`⚠️ User not found: ID ${userId}`);
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    this.logger.log(`🔍 Retrieved emergency contact for user ID: ${userId}`);
+
+    return {
+      user_id: userId,
+      emergency_contact: user.EmergencyContact
+        ? {
+            first_name: user.EmergencyContact.first_name,
+            last_name: user.EmergencyContact.last_name,
+            phone: user.EmergencyContact.phone,
+            relationship: user.EmergencyContact.relationship,
+          }
+        : null,
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🚨 UPDATE/CREATE EMERGENCY CONTACT (UPSERT)
+  // ═══════════════════════════════════════════════════════════════════════════
+  async updateEmergencyContact(
+    userId: number,
+    emergencyContactDto: UpdateEmergencyContactDto,
+  ) {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        EmergencyContact: true,
+      },
+    });
+
+    if (!existingUser) {
+      this.logger.warn(`⚠️ User not found: ID ${userId}`);
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    // Update existing or create new emergency contact
+    if (existingUser.EmergencyContact) {
+      // For updates, we can use partial data
+      await this.prisma.emergencyContact.update({
+        where: { id: existingUser.EmergencyContact.id },
+        data: emergencyContactDto,
+      });
+      this.logger.log(`✏️ Updated emergency contact for user ID: ${userId}`);
+    } else {
+      // For creation, we need all required fields
+      const { first_name, last_name, phone, relationship } =
+        emergencyContactDto;
+
+      if (!first_name || !last_name || !phone || !relationship) {
+        this.logger.warn(
+          `🛑 Missing required fields for emergency contact creation`,
+        );
+        throw new BadRequestException(
+          'first_name, last_name, phone, and relationship are required for creating emergency contact',
+        );
+      }
+
+      await this.prisma.emergencyContact.create({
+        data: {
+          first_name,
+          last_name,
+          phone,
+          relationship,
+          user_id: userId,
+        },
+      });
+      this.logger.log(`✅ Created emergency contact for user ID: ${userId}`);
+    }
+
+    // Return updated user with emergency contact
+    const updatedUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        EmergencyContact: true,
+      },
+    });
+
+    if (!updatedUser) {
+      this.logger.error(
+        `❌ User not found after emergency contact update: ID ${userId}`,
+      );
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    return {
+      user_id: userId,
+      emergency_contact: updatedUser.EmergencyContact
+        ? {
+            first_name: updatedUser.EmergencyContact.first_name,
+            last_name: updatedUser.EmergencyContact.last_name,
+            phone: updatedUser.EmergencyContact.phone,
+            relationship: updatedUser.EmergencyContact.relationship,
+          }
+        : null,
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🗑️ DELETE EMERGENCY CONTACT
+  // ═══════════════════════════════════════════════════════════════════════════
+  async deleteEmergencyContact(userId: number) {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        EmergencyContact: true,
+      },
+    });
+
+    if (!existingUser) {
+      this.logger.warn(`⚠️ User not found: ID ${userId}`);
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    if (!existingUser.EmergencyContact) {
+      this.logger.warn(`⚠️ Emergency contact not found for user ID: ${userId}`);
+      throw new NotFoundException(
+        `Emergency contact not found for user ID ${userId}`,
+      );
+    }
+
+    await this.prisma.emergencyContact.delete({
+      where: { id: existingUser.EmergencyContact.id },
+    });
+
+    this.logger.log(`🗑️ Deleted emergency contact for user ID: ${userId}`);
+  }
+
+  //================================================================================================================================
   async remove(id: number) {
     const user = await this.prisma.user.findUnique({
       where: { id },
