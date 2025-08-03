@@ -4,11 +4,14 @@ import { MedicalHistoryController } from './medical-history/medical-history.cont
 import { SurgicalHistoryModule } from './surgical-history/surgical-history.module';
 import { VaccineHistoryModule } from './vaccine-history/vaccine-history.module';
 import { PreviousPrescriptionModule } from './previous-prescription/previous-prescription.module';
+import { PreviousLabReportModule } from './previous-lab-report/previous-lab-report.module';
+import { AllergyModule } from './allergy/allergy.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 
 @Module({
   providers: [MedicalHistoryService],
   controllers: [MedicalHistoryController],
-  imports: [SurgicalHistoryModule, VaccineHistoryModule, PreviousPrescriptionModule]
+  imports: [SurgicalHistoryModule, VaccineHistoryModule, PreviousPrescriptionModule, PreviousLabReportModule, AllergyModule, DashboardModule]
 })
 export class PatientModule {}
