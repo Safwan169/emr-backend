@@ -14,20 +14,30 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { Cron } from '@nestjs/schedule';
 import { unlink } from 'fs/promises';
 import { UpdateEmergencyContactDto } from './dto/emergency-contact.dto';
+import { EmailService } from 'src/auth/email.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserService implements OnModuleInit {
   private readonly logger = new Logger(UserService.name);
 
-  private readonly SUPER_ADMIN_EMAIL = 'koushik101517@gmail.com';
-  private readonly SUPER_ADMIN_ROLE_NAME = 'super admin';
-  private readonly DEFAULT_SUPER_ADMIN_PASSWORD = '12345678';
+  private SUPER_ADMIN_EMAIL: string;
+  private SUPER_ADMIN_ROLE_NAME: string;
+  private DEFAULT_SUPER_ADMIN_PASSWORD: string;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly fileUploadService: FileUploadService,
-  ) {}
-
+    private readonly emailService: EmailService,
+    private readonly configService: ConfigService,
+  ) {
+    this.SUPER_ADMIN_EMAIL =
+      this.configService.get<string>('SUPER_ADMIN_EMAIL')!;
+    this.SUPER_ADMIN_ROLE_NAME =
+      this.configService.get<string>('SUPER_ADMIN_ROLE')!;
+    this.DEFAULT_SUPER_ADMIN_PASSWORD =
+      this.configService.get<string>('SUPER_ADMIN_PASS')!;
+  }
   async onModuleInit() {
     const roleName = this.SUPER_ADMIN_ROLE_NAME.toLowerCase();
 
@@ -152,6 +162,39 @@ export class UserService implements OnModuleInit {
     this.logger.log(
       `✅ User created: ${role.role_name} ID #${nextUserId} with email: (${email})`,
     );
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 📧 SEND EMAIL NOTIFICATIONS
+    // ═══════════════════════════════════════════════════════════════════════
+    const userCreationData = {
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      date_of_birth: dobDate.toISOString().split('T')[0],
+      gender: user.gender,
+      age: user.age,
+      role_name: role.role_name,
+      user_id: user.user_id,
+      created_at: user.created_at,
+      password: password, // Plain password for user notification
+      display_user_id: `${role.role_name}-${user.user_id}`,
+    };
+
+    // Send email to admin (async, don't wait)
+    this.emailService
+      .sendAdminUserCreationNotification(userCreationData)
+      .catch((error) => {
+        this.logger.error(
+          `Failed to send admin notification: ${error.message}`,
+        );
+      });
+
+    // Send email to created user (async, don't wait)
+    this.emailService
+      .sendUserAccountCreationEmail(userCreationData)
+      .catch((error) => {
+        this.logger.error(`Failed to send user notification: ${error.message}`);
+      });
 
     return this.formatUser(user);
   }

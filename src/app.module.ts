@@ -24,6 +24,9 @@ import { DoctorAvailabilityModule } from './appointment/doctor-availability/doct
     PatientModule,
     DoctorProfileModule,
     DoctorAvailabilityModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],
