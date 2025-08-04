@@ -562,6 +562,28 @@ export class AuthService {
 
     this.pendingRegistrations.delete(email);
 
+    // Send registration notification emails
+    const userRegistrationData = {
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      date_of_birth: user.date_of_birth.toISOString().split('T')[0],
+      gender: user.gender,
+      age: user.age,
+      role_name: user.role.role_name,
+      user_id: user.user_id,
+      created_at: user.created_at,
+    };
+
+    // Send emails asynchronously (don't wait for them to complete registration)
+    Promise.all([
+      this.emailService.sendAdminRegistrationNotification(userRegistrationData),
+      this.emailService.sendWelcomeEmail(userRegistrationData),
+    ]).catch((error) => {
+      this.logger.error('Failed to send registration emails:', error);
+      // Don't throw error as user registration was successful
+    });
+
     this.logger.log(`✅ User registered successfully with email: ${email}`);
 
     return {
