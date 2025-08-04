@@ -20,6 +20,9 @@ export class VaccineHistoryService {
   findByUserId(user_id: number) {
     return this.prisma.vaccineHistory.findMany({
       where: { user_id },
+       orderBy: {
+      created_at: 'desc', // Sort by creation time descending
+    },
     });
   }
 

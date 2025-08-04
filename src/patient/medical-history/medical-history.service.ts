@@ -18,11 +18,15 @@ export class MedicalHistoryService {
     });
   }
 
-  async findByUserId(userId: number) {
-    return await this.prisma.chronicConditionHistory.findMany({
-      where: { user_id: userId },
-    });
-  }
+ async findByUserId(userId: number) {
+  return await this.prisma.chronicConditionHistory.findMany({
+    where: { user_id: userId },
+    orderBy: {
+      created_at: 'desc', // Sort by creation time descending
+    },
+  });
+}
+
 
   async update(id: number, dto: UpdateChronicConditionDto) {
     const existing = await this.prisma.chronicConditionHistory.findUnique({ where: { id } });

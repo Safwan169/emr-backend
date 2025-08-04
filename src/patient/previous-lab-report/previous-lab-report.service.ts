@@ -22,6 +22,32 @@ export class PreviousLabReportService {
   async findAll(user_id: number) {
     return this.prisma.previousLabReport.findMany({
       where: { user_id },
+       orderBy: {
+      created_at: 'desc', // Sort by creation time descending
+    },
+    });
+  }
+
+  async findOne(id: number) {
+    const report = await this.prisma.previousLabReport.findUnique({
+      where: { id },
+    });
+    if (!report) throw new NotFoundException('Lab Report not found');
+    return report;
+  }
+
+  async update(
+    id: number,
+    data: { description?: string | null; file_url?: string },
+  ) {
+    const report = await this.prisma.previousLabReport.findUnique({
+      where: { id },
+    });
+    if (!report) throw new NotFoundException('Lab Report not found');
+
+    return this.prisma.previousLabReport.update({
+      where: { id },
+      data,
     });
   }
 
