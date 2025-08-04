@@ -22,6 +22,9 @@ export class PreviousPrescriptionService {
   async findAll(user_id: number) {
     return this.prisma.previousPrescription.findMany({
       where: { user_id },
+       orderBy: {
+      created_at: 'desc', // Sort by creation time descending
+    },
     });
   }
 

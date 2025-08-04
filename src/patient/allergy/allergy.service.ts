@@ -21,11 +21,15 @@ export class AllergyService {
     });
   }
 
-  findAll(userId: number) {
-    return this.prisma.allergy.findMany({
-      where: { user_id: userId },
-    });
-  }
+ findAll(userId: number) {
+  return this.prisma.allergy.findMany({
+    where: { user_id: userId },
+    orderBy: {
+      created_at: 'desc', // Sort by creation time descending
+    },
+  });
+}
+
 
   async findOne(id: number) {
     const allergy = await this.prisma.allergy.findUnique({ where: { id } });

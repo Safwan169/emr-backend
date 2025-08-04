@@ -20,6 +20,9 @@ export class SurgicalHistoryService {
   findByUserId(user_id: number) {
     return this.prisma.surgicalHistory.findMany({
       where: { user_id },
+       orderBy: {
+      created_at: 'desc', // Sort by creation time descending
+    },
     });
   }
 

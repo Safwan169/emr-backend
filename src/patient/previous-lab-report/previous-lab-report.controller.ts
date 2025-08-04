@@ -7,6 +7,7 @@ import {
   Body,
   UseInterceptors,
   Delete,
+  Patch,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -42,6 +43,39 @@ export class PreviousLabReportController {
   @Get(':user_id')
   async findAll(@Param('user_id') userId: number) {
     return this.service.findAll(+userId);
+  }
+
+  @Get('Single/:id')
+  async findOne(@Param('id') id: number) {
+    return this.service.findOne(+id);
+  }
+
+  @Patch(':id')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads',
+        filename: (req, file, cb) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
+  async update(
+    @Param('id') id: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    const updateData: any = {
+      description: body.description || null,
+    };
+
+    if (file) {
+      updateData.file_url = `/uploads/${file.filename}`;
+    }
+
+    return this.service.update(+id, updateData);
   }
 
   @Delete(':id')
