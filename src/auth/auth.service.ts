@@ -443,7 +443,6 @@ interface PendingRegistration {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
-  // For registration OTP: store OTP + user data keyed by email
   private pendingRegistrations = new Map<
     string,
     { otpCode: string; expiresAt: Date; registrationData: PendingRegistration }
@@ -455,25 +454,24 @@ export class AuthService {
     private emailService: EmailService,
   ) {}
 
-  // --- Registration OTP Step 1 ---
   async sendOtpForRegistration(userData: PendingRegistration) {
     const { email } = userData;
 
-    this.logger.log(`📋 Sending OTP for registration email: ${email}`);
+    this.logger.log(`📨 [OTP Request] Registration OTP sending to: ${email}`);
 
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
     if (existingUser) {
-      this.logger.warn(`🛑 Registration failed: User already exists: ${email}`);
+      this.logger.warn(
+        `⚠️ [Registration Blocked] Email already registered: ${email}`,
+      );
       throw new BadRequestException('User with this email already exists');
     }
 
     const existingOtpEntry = this.pendingRegistrations.get(email);
     if (existingOtpEntry && existingOtpEntry.expiresAt > new Date()) {
-      this.logger.warn(
-        `🚫 OTP send throttled for registration email: ${email}`,
-      );
+      this.logger.warn(`⏳ [OTP Cool down] Waiting period active for: ${email}`);
       throw new HttpException(
         'Please wait before requesting a new OTP.',
         HttpStatus.TOO_MANY_REQUESTS,
@@ -481,7 +479,7 @@ export class AuthService {
     }
 
     const otpCode = this.generateOTP();
-    const expiresAt = new Date(Date.now() + 2 * 60 * 1000); // 2 min expiry
+    const expiresAt = new Date(Date.now() + 2 * 60 * 1000);
 
     this.pendingRegistrations.set(email, {
       otpCode,
@@ -491,7 +489,7 @@ export class AuthService {
 
     await this.emailService.sendOtpEmail(email, otpCode);
 
-    this.logger.log(`✅ OTP sent for registration email: ${email}`);
+    this.logger.log(`✅ [OTP Sent] Registration OTP sent to: ${email}`);
 
     return {
       message:
@@ -500,28 +498,30 @@ export class AuthService {
     };
   }
 
-  // --- Registration OTP Step 2: verify OTP + create user ---
   async verifyOtpAndRegister(email: string, otp: string) {
-    this.logger.log(`📋 Verifying OTP for registration email: ${email}`);
+    this.logger.log(
+      `🔍 [OTP Verification] Verifying registration OTP for: ${email}`,
+    );
 
     const otpEntry = this.pendingRegistrations.get(email);
     if (!otpEntry) {
-      this.logger.warn(`🛑 No pending registration found for email: ${email}`);
+      this.logger.warn(
+        `❌ [Verification Failed] No pending registration found: ${email}`,
+      );
       throw new BadRequestException(
         'No pending registration found for this email.',
       );
     }
     if (otpEntry.expiresAt < new Date()) {
       this.pendingRegistrations.delete(email);
-      this.logger.warn(`🛑 OTP expired for registration email: ${email}`);
+      this.logger.warn(`⌛ [OTP Expired] OTP expired for: ${email}`);
       throw new BadRequestException('OTP expired. Please request a new one.');
     }
     if (otpEntry.otpCode !== otp) {
-      this.logger.warn(`🚫 Invalid OTP for registration email: ${email}`);
+      this.logger.warn(`🚫 [Invalid OTP] Wrong OTP entered for: ${email}`);
       throw new BadRequestException('Invalid OTP.');
     }
 
-    // OTP valid → create user
     const { first_name, last_name, password, date_of_birth, gender } =
       otpEntry.registrationData;
 
@@ -530,7 +530,7 @@ export class AuthService {
     });
     if (!role) {
       role = await this.prisma.role.create({ data: { role_name: 'patient' } });
-      this.logger.log(`✏️ Role 'patient' created`);
+      this.logger.log(`🧾 [Role Check] Default 'patient' role created`);
     }
 
     const lastUser = await this.prisma.user.findFirst({
@@ -541,7 +541,6 @@ export class AuthService {
     const user_id = (lastUser?.user_id || 0) + 1;
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const dobDate = new Date(date_of_birth);
     const age = this.calculateFormattedAge(dobDate);
 
@@ -562,7 +561,6 @@ export class AuthService {
 
     this.pendingRegistrations.delete(email);
 
-    // Send registration notification emails
     const userRegistrationData = {
       first_name: user.first_name,
       last_name: user.last_name,
@@ -575,16 +573,17 @@ export class AuthService {
       created_at: user.created_at,
     };
 
-    // Send emails asynchronously (don't wait for them to complete registration)
     Promise.all([
       this.emailService.sendAdminRegistrationNotification(userRegistrationData),
       this.emailService.sendWelcomeEmail(userRegistrationData),
     ]).catch((error) => {
-      this.logger.error('Failed to send registration emails:', error);
-      // Don't throw error as user registration was successful
+      this.logger.error(
+        '📛 [Email Error] Failed to send registration emails:',
+        error,
+      );
     });
 
-    this.logger.log(`✅ User registered successfully with email: ${email}`);
+    this.logger.log(`✅ [User Registered] Successfully created user: ${email}`);
 
     return {
       message: 'User registered successfully',
@@ -592,9 +591,8 @@ export class AuthService {
     };
   }
 
-  // --- Normal Login with password only (no OTP) ---
   async login(dto: { email: string; password: string }) {
-    this.logger.log(`📋 Login attempt for email: ${dto.email}`);
+    this.logger.log(`🔐 [Login Attempt] Email: ${dto.email}`);
 
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -602,9 +600,7 @@ export class AuthService {
     });
 
     if (!user) {
-      this.logger.warn(
-        `❌ Login failed: No user found for email: ${dto.email}`,
-      );
+      this.logger.warn(`❌ [Login Failed] No user found: ${dto.email}`);
       throw new UnauthorizedException('Invalid email or password');
     }
 
@@ -613,17 +609,17 @@ export class AuthService {
       user.password_hashed,
     );
     if (!isPasswordValid) {
-      this.logger.warn(
-        `🚫 Login failed: Incorrect password for email: ${dto.email}`,
-      );
+      this.logger.warn(`🚫 [Login Failed] Wrong password for: ${dto.email}`);
       throw new UnauthorizedException('Invalid email or password');
     }
 
     if (!user?.role?.role_name) {
+      this.logger.warn(
+        `⚠️ [Login Blocked] Role not assigned for user: ${dto.email}`,
+      );
       throw new UnauthorizedException('User role not found');
     }
 
-    // Generate JWT token directly
     const payload = {
       userId: user.id,
       email: user.email,
@@ -634,7 +630,7 @@ export class AuthService {
 
     const access_token = this.jwtService.sign(payload);
 
-    this.logger.log(`✅ User logged in successfully: ${user.email}`);
+    this.logger.log(`✅ [Login Success] JWT issued for: ${user.email}`);
 
     return {
       user: this.formatUser(user),
