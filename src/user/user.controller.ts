@@ -68,14 +68,14 @@ export class UserController {
   // ═══════════════════════════════════════════════════════════════════════════
   // 🔍 GET SINGLE USER
   // ═══════════════════════════════════════════════════════════════════════════
-  @Get(':ID')
-  async findOne(@Param('ID') ID: string) {
+  @Get(':Id')
+  async findOne(@Param('Id') Id: string) {
     try {
-      const user = await this.userService.findOne(+ID);
+      const user = await this.userService.findOne(+Id);
       return successResponse(user, `🔍 User retrieved successfully`);
     } catch (error) {
       return errorResponse(
-        error.message || `❌ Failed to fetch user with ID: ${ID}`,
+        error.message || `❌ Failed to fetch user with ID: ${Id}`,
         HttpStatus.NOT_FOUND,
       );
     }
@@ -84,12 +84,12 @@ export class UserController {
   // ═══════════════════════════════════════════════════════════════════════════
   // ✏️ UPDATE USER WITH PROFILE IMAGE
   // ═══════════════════════════════════════════════════════════════════════════
-  @Put(':ID')
+  @Put(':Id')
   @UseInterceptors(
     FileFieldsInterceptor([{ name: 'profile_image', maxCount: 1 }]),
   )
   async update(
-    @Param('ID') ID: string,
+    @Param('Id') Id: string,
     @Body() updateUserDto: UpdateUserDto,
     @UploadedFiles()
     files: {
@@ -100,18 +100,18 @@ export class UserController {
       const profileImageFile = files?.profile_image?.[0];
 
       const updatedUser = await this.userService.update(
-        +ID,
+        +Id,
         updateUserDto,
         profileImageFile,
       );
 
       return successResponse(
         updatedUser,
-        `✅ User ID: ${ID} updated successfully`,
+        `✅ User ID: ${Id} updated successfully`,
       );
     } catch (error) {
       return errorResponse(
-        error.message || `❌ Failed to update user with ID: ${ID}`,
+        error.message || `❌ Failed to update user with ID: ${Id}`,
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -122,10 +122,10 @@ export class UserController {
   // ═══════════════════════════════════════════════════════════════════════════
   // 🔍 GET EMERGENCY CONTACT BY USER ID
   // ═══════════════════════════════════════════════════════════════════════════
-  @Get(':ID/emergency-contact')
-  async getEmergencyContact(@Param('ID') ID: string) {
+  @Get(':Id/EmergencyContact')
+  async getEmergencyContact(@Param('Id') Id: string) {
     try {
-      const emergencyContact = await this.userService.getEmergencyContact(+ID);
+      const emergencyContact = await this.userService.getEmergencyContact(+Id);
       return successResponse(
         emergencyContact,
         `🔍 Emergency contact retrieved successfully`,
@@ -133,7 +133,7 @@ export class UserController {
     } catch (error) {
       return errorResponse(
         error.message ||
-          `❌ Failed to fetch emergency contact for user ID: ${ID}`,
+          `❌ Failed to fetch emergency contact for user ID: ${Id}`,
         HttpStatus.NOT_FOUND,
       );
     }
@@ -142,26 +142,26 @@ export class UserController {
   // ═══════════════════════════════════════════════════════════════════════════
   // ✏️ UPDATE/CREATE EMERGENCY CONTACT (UPSERT)
   // ═══════════════════════════════════════════════════════════════════════════
-  @Put(':ID/emergency-contact')
+  @Put(':Id/EmergencyContact')
   async updateEmergencyContact(
-    @Param('ID') ID: string,
+    @Param('Id') Id: string,
     @Body() updateEmergencyContactDto: UpdateEmergencyContactDto,
   ) {
     try {
       const updatedEmergencyContact =
         await this.userService.updateEmergencyContact(
-          +ID,
+          +Id,
           updateEmergencyContactDto,
         );
 
       return successResponse(
         updatedEmergencyContact,
-        `✅ Emergency contact updated successfully for user ID: ${ID}`,
+        `✅ Emergency contact updated successfully for user ID: ${Id}`,
       );
     } catch (error) {
       return errorResponse(
         error.message ||
-          `❌ Failed to update emergency contact for user ID: ${ID}`,
+          `❌ Failed to update emergency contact for user ID: ${Id}`,
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -170,18 +170,18 @@ export class UserController {
   // ═══════════════════════════════════════════════════════════════════════════
   // 🗑️ DELETE EMERGENCY CONTACT
   // ═══════════════════════════════════════════════════════════════════════════
-  @Delete(':ID/emergency-contact')
-  async deleteEmergencyContact(@Param('ID') ID: string) {
+  @Delete(':Id/EmergencyContact')
+  async deleteEmergencyContact(@Param('Id') Id: string) {
     try {
-      await this.userService.deleteEmergencyContact(+ID);
+      await this.userService.deleteEmergencyContact(+Id);
       return successResponse(
         null,
-        `🗑️ Emergency contact deleted successfully for user ID: ${ID}`,
+        `🗑️ Emergency contact deleted successfully for user ID: ${Id}`,
       );
     } catch (error) {
       return errorResponse(
         error.message ||
-          `❌ Failed to delete emergency contact for user ID: ${ID}`,
+          `❌ Failed to delete emergency contact for user ID: ${Id}`,
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -192,15 +192,15 @@ export class UserController {
   // ═══════════════════════════════════════════════════════════════════════════
   // 🗑️ DELETE USER
   // ═══════════════════════════════════════════════════════════════════════════
-  @Delete(':ID')
+  @Delete(':Id')
   // @UseGuards(JwtAuthGuard, AdminGuard)
-  async remove(@Param('ID') ID: string) {
+  async remove(@Param('Id') Id: string) {
     try {
-      await this.userService.remove(+ID);
-      return successResponse(null, `🗑️ User ID: ${ID} deleted successfully`);
+      await this.userService.remove(+Id);
+      return successResponse(null, `🗑️ User ID: ${Id} deleted successfully`);
     } catch (error) {
       return errorResponse(
-        error.message || `❌ Failed to delete user with ID: ${ID}`,
+        error.message || `❌ Failed to delete user with ID: ${Id}`,
         HttpStatus.BAD_REQUEST,
       );
     }

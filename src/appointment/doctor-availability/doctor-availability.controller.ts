@@ -17,31 +17,31 @@ export class DoctorAvailabilityController {
     private readonly slotGenerationService: SlotGenerationService,
   ) {}
 
-  @Post(':doctorId')
+  @Post(':DoctorId')
   async createAvailability(
-    @Param('doctorId', ParseIntPipe) doctorId: number,
+    @Param('DoctorId', ParseIntPipe) DoctorId: number,
     @Body() dto: CreateDoctorAvailabilityDto,
   ) {
     return this.doctorAvailabilityService.createAvailability({
-      doctor_id: doctorId,
+      doctor_id: DoctorId,
       ...dto,
     });
   }
 
-  @Get(':doctorId')
-  async getAvailability(@Param('doctorId', ParseIntPipe) doctorId: number) {
-    return this.doctorAvailabilityService.getAvailability(doctorId);
+  @Get(':DoctorId')
+  async getAvailability(@Param('DoctorId', ParseIntPipe) DoctorId: number) {
+    return this.doctorAvailabilityService.getAvailability(DoctorId);
   }
 
-  @Get(':doctorId/appointments')
+  @Get(':DoctorId/Appointments')
   async getDoctorAppointments(
-    @Param('doctorId', ParseIntPipe) doctorId: number,
+    @Param('DoctorId', ParseIntPipe) DoctorId: number,
   ) {
-    return this.doctorAvailabilityService.getDoctorAppointments(doctorId);
+    return this.doctorAvailabilityService.getDoctorAppointments(DoctorId);
   }
 
-  // Manual trigger for testing (optional)
-  @Post('admin/generate-slots')
+  //! Manual trigger for testing (optional)
+  @Post('Admin/GenerateSlots')
   async generateSlots() {
     return this.slotGenerationService.generateSlotsManually();
   }

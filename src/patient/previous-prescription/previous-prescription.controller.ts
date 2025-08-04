@@ -24,7 +24,8 @@ export class PreviousPrescriptionController {
       storage: diskStorage({
         destination: './uploads',
         filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
         },
       }),
@@ -45,9 +46,9 @@ export class PreviousPrescriptionController {
     return this.service.findAll(+userId);
   }
 
-  @Get('single/:id')
-  async findOne(@Param('id') id: number) {
-    return this.service.findOne(+id);
+  @Get('single/:Id')
+  async findOne(@Param('Id') Id: number) {
+    return this.service.findOne(+Id);
   }
 
   @Patch(':id')
@@ -56,7 +57,8 @@ export class PreviousPrescriptionController {
       storage: diskStorage({
         destination: './uploads',
         filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
         },
       }),
@@ -78,8 +80,8 @@ export class PreviousPrescriptionController {
     return this.service.update(+id, updateData);
   }
 
-  @Delete(':id')
-  async remove(@Param('id') id: number) {
-    return this.service.remove(+id);
+  @Delete(':Id')
+  async remove(@Param('Id') Id: number) {
+    return this.service.remove(+Id);
   }
 }
