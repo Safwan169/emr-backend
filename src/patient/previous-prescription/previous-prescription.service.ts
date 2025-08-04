@@ -1,7 +1,5 @@
-// previous-prescription.service.ts
-
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service'; // Your PrismaService import path
+import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePreviousPrescriptionDto } from './dto/create-previous-prescription.dto';
 
 @Injectable()
@@ -14,7 +12,7 @@ export class PreviousPrescriptionService {
   ) {
     return this.prisma.previousPrescription.create({
       data: {
-        user_id,               // match exactly your prisma model
+        user_id,
         description: dto.description || null,
         file_url: dto.file_url,
       },
@@ -23,7 +21,30 @@ export class PreviousPrescriptionService {
 
   async findAll(user_id: number) {
     return this.prisma.previousPrescription.findMany({
-      where: { user_id },  // exact field name
+      where: { user_id },
+    });
+  }
+
+  async findOne(id: number) {
+    const prescription = await this.prisma.previousPrescription.findUnique({
+      where: { id },
+    });
+    if (!prescription) throw new NotFoundException('Prescription not found');
+    return prescription;
+  }
+
+  async update(
+    id: number,
+    data: { description?: string | null; file_url?: string },
+  ) {
+    const exists = await this.prisma.previousPrescription.findUnique({
+      where: { id },
+    });
+    if (!exists) throw new NotFoundException('Prescription not found');
+
+    return this.prisma.previousPrescription.update({
+      where: { id },
+      data,
     });
   }
 
@@ -32,6 +53,7 @@ export class PreviousPrescriptionService {
       where: { id },
     });
     if (!record) throw new NotFoundException('Prescription not found');
+
     return this.prisma.previousPrescription.delete({ where: { id } });
   }
 }
