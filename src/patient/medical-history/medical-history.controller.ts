@@ -18,31 +18,31 @@ import { UpdateChronicConditionDto } from '../../patient/dto/update-chronic-cond
 export class MedicalHistoryController {
   constructor(private readonly service: MedicalHistoryService) {}
 
-  @Post(':userId')
+  @Post(':UserId')
   @UsePipes(new ValidationPipe({ whitelist: true }))
   create(
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param('UserId', ParseIntPipe) UserId: number,
     @Body() dto: CreateChronicConditionDto,
   ) {
-    return this.service.create(userId, dto);
+    return this.service.create(UserId, dto);
   }
 
-  @Get(':userId')
-  getByUser(@Param('userId', ParseIntPipe) userId: number) {
-    return this.service.findByUserId(userId);
+  @Get(':UserId')
+  getByUser(@Param('UserId', ParseIntPipe) UserId: number) {
+    return this.service.findByUserId(UserId);
   }
 
-  @Put(':id')
+  @Put(':Id')
   @UsePipes(new ValidationPipe({ whitelist: true }))
   update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('Id', ParseIntPipe) Id: number,
     @Body() dto: UpdateChronicConditionDto,
   ) {
-    return this.service.update(id, dto);
+    return this.service.update(Id, dto);
   }
 
-  @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.service.remove(id);
+  @Delete(':Id')
+  remove(@Param('Id', ParseIntPipe) Id: number) {
+    return this.service.remove(Id);
   }
 }

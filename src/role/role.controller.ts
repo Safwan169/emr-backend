@@ -33,27 +33,27 @@ export class RoleController {
     return successResponse(roles, 'Roles fetched successfully');
   }
 
-  @Get(':ID')
-  async findOne(@Param('ID') ID: string) {
-    const role = await this.roleService.findById(Number(ID));
+  @Get(':Id')
+  async findOne(@Param('Id') Id: string) {
+    const role = await this.roleService.findById(Number(Id));
     return successResponse(role, 'Role fetched successfully');
   }
 
-  @Put(':ID')
-  async update(@Param('ID') ID: string, @Body() dto: UpdateRoleDto) {
+  @Put(':Id')
+  async update(@Param('Id') Id: string, @Body() dto: UpdateRoleDto) {
     if (!dto.role_name) {
       throw new BadRequestException('role_name is required');
     }
     const updatedRole = await this.roleService.update(
-      Number(ID),
+      Number(Id),
       dto.role_name,
     );
     return successResponse(updatedRole, 'Role updated successfully');
   }
 
-  @Delete(':ID')
-  async remove(@Param('ID') ID: string) {
-    const deletedRole = await this.roleService.delete(Number(ID));
+  @Delete(':Id')
+  async remove(@Param('Id') Id: string) {
+    const deletedRole = await this.roleService.delete(Number(Id));
     return successResponse(deletedRole, 'Role deleted successfully');
   }
 }

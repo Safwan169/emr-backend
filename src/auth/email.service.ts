@@ -296,8 +296,8 @@ interface UserRegistrationData {
 }
 
 interface UserCreationData extends UserRegistrationData {
-  password: string; // Added for user creation notification
-  display_user_id: string; // Added for display purposes
+  password: string;
+  display_user_id: string;
 }
 
 @Injectable()
@@ -330,9 +330,14 @@ export class EmailService {
   private async verifyConnection() {
     try {
       await this.transporter.verify();
-      this.logger.log('✅ Email service connection verified successfully');
+      this.logger.log(
+        `[📨 Email service connection verify] ✅ Email service connection verified successfully`,
+      );
     } catch (error) {
-      this.logger.error('❌ Email service connection failed:', error);
+      this.logger.error(
+        `[📨 Email service connection verify] ❌ Email service connection failed:`,
+        error,
+      );
     }
   }
 
@@ -447,10 +452,12 @@ export class EmailService {
       };
 
       await this.transporter.sendMail(mailOptions);
-      this.logger.log(`✅ OTP sent to email: ${email}`);
+      this.logger.log(`[🔐 OTP Email] ✅ OTP sent to email: ${email}`);
     } catch (error) {
-      this.logger.error(`❌ Failed to send OTP email to ${email}:`, error);
-      throw new Error('Failed to send OTP email');
+      this.logger.error(
+        `[🔐 OTP Email] ❌ Failed to send OTP email to ${email}:`,
+        error,
+      );
     }
   }
 
@@ -568,13 +575,14 @@ export class EmailService {
       };
 
       await this.transporter.sendMail(mailOptions);
-      this.logger.log(`✅ Login verification email sent to ${email}`);
+      this.logger.log(
+        `[🛡️ Login Verification] ✅ Login verification email sent to ${email}`,
+      );
     } catch (error) {
       this.logger.error(
-        `❌ Failed to send login verification email to ${email}:`,
+        `[🛡️ Login Verification] ❌ Failed to send login verification email to ${email}:`,
         error,
       );
-      throw new Error('Failed to send login verification email');
     }
   }
 
@@ -759,14 +767,13 @@ export class EmailService {
 
       await this.transporter.sendMail(mailOptions);
       this.logger.log(
-        `✅ Admin registration notification sent for user: ${userData.email}`,
+        `[🧑‍💼 Admin Notification] ✅ Admin registration notification sent for user: ${userData.email}`,
       );
     } catch (error) {
       this.logger.error(
-        `❌ Failed to send admin registration notification for ${userData.email}:`,
+        `[🧑‍💼 Admin Notification] ❌ Failed to send admin registration notification for ${userData.email}:`,
         error,
       );
-      // Don't throw error here as it shouldn't block user registration
     }
   }
 
@@ -948,13 +955,14 @@ export class EmailService {
       };
 
       await this.transporter.sendMail(mailOptions);
-      this.logger.log(`✅ Welcome email sent to user: ${userData.email}`);
+      this.logger.log(
+        `[👋 Welcome Email] ✅ Welcome email sent to user: ${userData.email}`,
+      );
     } catch (error) {
       this.logger.error(
-        `❌ Failed to send welcome email to ${userData.email}:`,
+        `[👋 Welcome Email] ❌ Failed to send welcome email to ${userData.email}:`,
         error,
       );
-      // Don't throw error here as it shouldn't block user registration
     }
   }
 
@@ -1138,9 +1146,13 @@ export class EmailService {
       };
 
       await this.transporter.sendMail(mailOptions);
-      this.logger.log(`✅ Email sent to ${userData.email}`);
+      this.logger.log(
+        `[⚙️ Admin Created User] ✅ Email sent to ${userData.email}`,
+      );
     } catch (error) {
-      this.logger.error(`❌ Error sending email: ${error.message}`);
+      this.logger.error(
+        `[⚙️ Admin Created User] ❌ Error sending email: ${error.message}`,
+      );
     }
   }
 
@@ -1328,11 +1340,11 @@ export class EmailService {
 
       await this.transporter.sendMail(mailOptions);
       this.logger.log(
-        `✅ User account creation email sent to: ${userData.email}`,
+        `[👤 User Account Created] ✅ User account creation email sent to: ${userData.email}`,
       );
     } catch (error) {
       this.logger.error(
-        `❌ Failed to send user account creation email to ${userData.email}:`,
+        `[👤 User Account Created] ❌ Failed to send user account creation email to ${userData.email}:`,
         error,
       );
     }

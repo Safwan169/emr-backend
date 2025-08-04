@@ -18,38 +18,35 @@ export class AllergyController {
   constructor(private readonly allergyService: AllergyService) {}
 
   // POST /Patient/Allergies/:user_id
-  @Post(':user_id')
+  @Post(':UserId')
   create(
-    @Param('user_id', ParseIntPipe) userId: number,
+    @Param('UserId', ParseIntPipe) UserId: number,
     @Body() dto: CreateAllergyDto,
   ) {
-    return this.allergyService.create(userId, dto);
+    return this.allergyService.create(UserId, dto);
   }
 
   // GET /Patient/Allergies/:user_id
-  @Get(':user_id')
-  findAll(@Param('user_id', ParseIntPipe) userId: number) {
-    return this.allergyService.findAll(userId);
+  @Get(':UserId')
+  findAll(@Param('UserId', ParseIntPipe) UserId: number) {
+    return this.allergyService.findAll(UserId);
   }
 
   // GET /Patient/Allergies/Single/:id
-  @Get('Single/:id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.allergyService.findOne(id);
+  @Get('Single/:Id')
+  findOne(@Param('Id', ParseIntPipe) Id: number) {
+    return this.allergyService.findOne(Id);
   }
 
   // PATCH /Patient/Allergies/:id
-  @Put(':id')
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateAllergyDto,
-  ) {
-    return this.allergyService.update(id, dto);
+  @Put(':Id')
+  update(@Param('Id', ParseIntPipe) Id: number, @Body() dto: UpdateAllergyDto) {
+    return this.allergyService.update(Id, dto);
   }
 
   // DELETE /Patient/Allergies/:id
-  @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.allergyService.remove(id);
+  @Delete(':Id')
+  remove(@Param('Id', ParseIntPipe) Id: number) {
+    return this.allergyService.remove(Id);
   }
 }

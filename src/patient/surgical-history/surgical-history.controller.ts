@@ -18,28 +18,31 @@ import { UpdateSurgicalHistoryDto } from './dto/update-surgical-history.dto';
 export class SurgicalHistoryController {
   constructor(private readonly service: SurgicalHistoryService) {}
 
-  @Post(':user_id')
+  @Post(':UserID')
   @UsePipes(new ValidationPipe())
   create(
-    @Param('user_id', ParseIntPipe) user_id: number,
+    @Param('UserID', ParseIntPipe) UserID: number,
     @Body() dto: CreateSurgicalHistoryDto,
   ) {
-    return this.service.create(user_id, dto);
+    return this.service.create(UserID, dto);
   }
 
-  @Get(':user_id')
-  findByUser(@Param('user_id', ParseIntPipe) user_id: number) {
-    return this.service.findByUserId(user_id);
+  @Get(':UserID')
+  findByUser(@Param('UserID', ParseIntPipe) UserID: number) {
+    return this.service.findByUserId(UserID);
   }
 
-  @Put(':id')
+  @Put(':Id')
   @UsePipes(new ValidationPipe())
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSurgicalHistoryDto) {
-    return this.service.update(id, dto);
+  update(
+    @Param('Id', ParseIntPipe) Id: number,
+    @Body() dto: UpdateSurgicalHistoryDto,
+  ) {
+    return this.service.update(Id, dto);
   }
 
-  @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.service.remove(id);
+  @Delete(':Id')
+  remove(@Param('Id', ParseIntPipe) Id: number) {
+    return this.service.remove(Id);
   }
 }

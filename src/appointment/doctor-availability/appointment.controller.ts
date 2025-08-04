@@ -11,73 +11,70 @@ import { DoctorAvailabilityService } from './doctor-availability.service';
 import { BookAppointmentDto } from './dto/book-appointment.dto';
 import { AppointmentStatus } from '@prisma/client';
 
-
-@Controller('appointments')
+@Controller('Appointments')
 export class AppointmentController {
   constructor(
     private readonly doctorAvailabilityService: DoctorAvailabilityService,
   ) {}
 
-  @Post('book/:patientId/slot')
+  @Post('Book/:PatientId/Slot')
   async bookAppointment(
-    @Param('patientId', ParseIntPipe) patientId: number,
+    @Param('PatientId', ParseIntPipe) PatientId: number,
     @Body() dto: BookAppointmentDto,
   ) {
     return this.doctorAvailabilityService.bookAppointmentBySlot({
-      patient_id: patientId,
+      patient_id: PatientId,
       slot_id: dto.slot_id,
       doctor_id: dto.doctor_id,
       notes: dto.notes,
     });
   }
 
-  @Get('patient/:patientId')
+  @Get('Patient/:PatientId')
   async getPatientAppointments(
-    @Param('patientId', ParseIntPipe) patientId: number,
+    @Param('PatientId', ParseIntPipe) PatientId: number,
   ) {
-    return this.doctorAvailabilityService.getPatientAppointments(patientId);
+    return this.doctorAvailabilityService.getPatientAppointments(PatientId);
   }
 
-  @Get('doctor/:doctorId/available-slots')
+  @Get('Doctor/:DoctorId/AvailableSlots')
   async getDoctorAvailableSlots(
-    @Param('doctorId', ParseIntPipe) doctorId: number,
+    @Param('DoctorId', ParseIntPipe) DoctorId: number,
   ) {
-    return this.doctorAvailabilityService.getAvailability(doctorId);
+    return this.doctorAvailabilityService.getAvailability(DoctorId);
   }
 
-  @Get('doctors/available')
+  @Get('Doctors/Available')
   async getAvailableDoctors() {
     return this.doctorAvailabilityService.getAvailableDoctors();
   }
 
-  @Get('doctor/:doctorId/patients/count')
-async getDoctorPatientCount(
-  @Param('doctorId', ParseIntPipe) doctorId: number,
-) {
-  return this.doctorAvailabilityService.getDoctorPatientCount(doctorId);
-}
+  @Get('Doctor/:DoctorId/Patients/Count')
+  async getDoctorPatientCount(
+    @Param('DoctorId', ParseIntPipe) DoctorId: number,
+  ) {
+    return this.doctorAvailabilityService.getDoctorPatientCount(DoctorId);
+  }
 
-@Get('doctor/:doctorId/patients')
-async getAllPatientsByDoctor(
-  @Param('doctorId', ParseIntPipe) doctorId: number,
-) {
-  return this.doctorAvailabilityService.getAllPatientsByDoctor(doctorId);
-}
+  @Get('Doctor/:DoctorId/Patients')
+  async getAllPatientsByDoctor(
+    @Param('DoctorId', ParseIntPipe) DoctorId: number,
+  ) {
+    return this.doctorAvailabilityService.getAllPatientsByDoctor(DoctorId);
+  }
 
-@Get('today/:doctorId')
-getTodaysAppointments(@Param('doctorId', ParseIntPipe) doctorId: number) {
-  return this.doctorAvailabilityService.getTodaysAppointmentsByDoctor(doctorId);
-}
+  @Get('Today/:DoctorId')
+  getTodaysAppointments(@Param('DoctorId', ParseIntPipe) DoctorId: number) {
+    return this.doctorAvailabilityService.getTodaysAppointmentsByDoctor(
+      DoctorId,
+    );
+  }
 
-
-@Put(':id/status')
-async updateStatus(
-  @Param('id', ParseIntPipe) id: number,
-  @Body('status') status: AppointmentStatus,
-) {
-  return this.doctorAvailabilityService.updateAppointmentStatus(id, status);
-}
-
-
-
+  @Put(':Id/Status')
+  async updateStatus(
+    @Param('Id', ParseIntPipe) Id: number,
+    @Body('Status') Status: AppointmentStatus,
+  ) {
+    return this.doctorAvailabilityService.updateAppointmentStatus(Id, Status);
+  }
 }
