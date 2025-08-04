@@ -3,6 +3,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateDoctorAvailabilityDto } from './dto/create-availability.dto';
 import { addMinutes, format, startOfDay } from 'date-fns';
 import { WeekDayEnum, AppointmentSlot } from '@prisma/client';
+import { endOfDay, differenceInYears } from 'date-fns';
+import { AppointmentStatus } from '@prisma/client';
+
+
 
 type Slot = {
   date: string;
@@ -739,4 +743,169 @@ export class DoctorAvailabilityService {
 
     return formattedAppointments;
   }
+
+  async getDoctorPatientCount(doctorId: number): Promise<{ patientCount: number }> {
+  const distinctPatients = await this.prisma.appointment.findMany({
+    where: {
+      slot: {
+        user_id: doctorId, // slot.user_id is the doctor
+      },
+    },
+    select: {
+      user_id: true, // user_id is the patient
+    },
+    distinct: ['user_id'], // unique patients only
+  });
+
+  return { patientCount: distinctPatients.length };
+}
+
+
+
+async getAllPatientsByDoctor(doctorId: number): Promise<any[]> {
+  const appointments = await this.prisma.appointment.findMany({
+    where: {
+      slot: {
+        user_id: doctorId,
+      },
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          first_name: true,
+          last_name: true,
+          gender: true,
+          date_of_birth: true,
+          ChronicConditionHistory: {
+            select: {
+              name: true, // ✅ Corrected field from your model
+            },
+            take: 1, // Only the first condition (you can increase or loop if needed)
+          },
+        },
+      },
+    },
+    orderBy: {
+      created_at: 'desc',
+    },
+  });
+
+  const uniquePatientsMap = new Map<number, any>();
+
+  for (const appointment of appointments) {
+    const user = appointment.user;
+    if (!user) continue;
+
+    const patientId = user.id;
+    if (!uniquePatientsMap.has(patientId)) {
+      const fullName = `${user.first_name} ${user.last_name}`;
+      const age = differenceInYears(new Date(), new Date(user.date_of_birth));
+
+      uniquePatientsMap.set(patientId, {
+        user_id: patientId,
+        name: fullName,
+        gender: user.gender,
+        age,
+        appointment_date: appointment.created_at,
+        condition: user.ChronicConditionHistory[0]?.name || 'N/A',
+        status: appointment.status,
+      });
+    }
+  }
+
+  return Array.from(uniquePatientsMap.values());
+}
+
+
+async getTodaysAppointmentsByDoctor(doctorId: number): Promise<{ total: number; appointments: any[] }> {
+  const todayStart = startOfDay(new Date());
+  const todayEnd = endOfDay(new Date());
+
+  // Fetch appointments with user details
+  const appointments = await this.prisma.appointment.findMany({
+    where: {
+      created_at: {
+        gte: todayStart,
+        lte: todayEnd,
+      },
+      slot: {
+        user_id: doctorId,
+      },
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          first_name: true,
+          last_name: true,
+          gender: true,
+          date_of_birth: true,
+          ChronicConditionHistory: {
+            select: {
+              name: true,
+            },
+            take: 1,
+          },
+        },
+      },
+    },
+    orderBy: {
+      created_at: 'asc',
+    },
+  });
+
+  // Count total number of today's appointments for the doctor
+  const total = await this.prisma.appointment.count({
+    where: {
+      created_at: {
+        gte: todayStart,
+        lte: todayEnd,
+      },
+      slot: {
+        user_id: doctorId,
+      },
+    },
+  });
+
+  // Format appointment info
+  const formattedAppointments = appointments.map((appointment) => {
+    const user = appointment.user;
+    const fullName = `${user.first_name} ${user.last_name}`;
+    const age = differenceInYears(new Date(), new Date(user.date_of_birth));
+    return {
+      user_id: user.id,
+      name: fullName,
+      gender: user.gender,
+      age,
+      appointment_time: appointment.created_at,
+      condition: user.ChronicConditionHistory[0]?.name || 'N/A',
+      status: appointment.status,
+    };
+  });
+
+  return {
+    total,
+    appointments: formattedAppointments,
+  };
+}
+
+
+
+async updateAppointmentStatus(appointmentId: number, newStatus: AppointmentStatus) {
+  // Optional: verify appointment exists first (optional)
+  const appointment = await this.prisma.appointment.findUnique({ where: { id: appointmentId } });
+  if (!appointment) {
+    throw new Error('Appointment not found');
+  }
+
+  return this.prisma.appointment.update({
+    where: { id: appointmentId },
+    data: { status: newStatus },
+  });
+}
+
+
+
+
 }
