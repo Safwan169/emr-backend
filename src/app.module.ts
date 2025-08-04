@@ -10,10 +10,11 @@ import { RoleModule } from './role/role.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DoctorProfileModule } from './user/doctor/doctor-profile/doctor-profile.module';
 import { PatientModule } from './patient/patient.module';
+import { DoctorAvailabilityModule } from './appointment/doctor-availability/doctor-availability.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }), 
+    ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     AuthModule,
     UserModule,
@@ -22,6 +23,7 @@ import { PatientModule } from './patient/patient.module';
     ScheduleModule.forRoot(),
     PatientModule,
     DoctorProfileModule,
+    DoctorAvailabilityModule,
   ],
   controllers: [AppController],
   providers: [AppService],
