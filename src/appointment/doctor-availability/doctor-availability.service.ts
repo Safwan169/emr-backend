@@ -1,24 +1,8 @@
-import {
-  Injectable,
-  BadRequestException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateDoctorAvailabilityDto } from './dto/create-availability.dto';
-import {
-  addMinutes,
-  format,
-  startOfDay,
-  isAfter,
-  isBefore,
-  addDays,
-} from 'date-fns';
-import {
-  WeekDayEnum,
-  AppointmentSlot,
-  AppointmentStatus,
-} from '@prisma/client';
+import { addMinutes, format, startOfDay } from 'date-fns';
+import { WeekDayEnum, AppointmentSlot } from '@prisma/client';
 
 type Slot = {
   date: string;
@@ -29,6 +13,264 @@ type Slot = {
 @Injectable()
 export class DoctorAvailabilityService {
   constructor(private readonly prisma: PrismaService) {}
+
+  // NEW METHOD: Book appointment by slot with doctor validation
+  async bookAppointmentBySlot(dto: {
+    patient_id: number;
+    slot_id: number;
+    doctor_id: number;
+    notes?: string;
+  }) {
+    const { patient_id, slot_id, doctor_id, notes } = dto;
+
+    // Validate patient exists and has correct role
+    const patient = await this.prisma.user.findFirst({
+      where: {
+        id: patient_id,
+        role: { role_name: 'patient' },
+      },
+    });
+
+    if (!patient) {
+      throw new BadRequestException('Patient not found or invalid role');
+    }
+
+    // Validate doctor exists and has correct role
+    const doctor = await this.prisma.user.findFirst({
+      where: {
+        id: doctor_id,
+        role: { role_name: 'doctor' },
+      },
+      select: {
+        id: true,
+        first_name: true,
+        last_name: true,
+        DoctorProfile: {
+          select: {
+            specialization: true,
+            hospital: true,
+          },
+        },
+      },
+    });
+
+    if (!doctor) {
+      throw new BadRequestException('Doctor not found or invalid role');
+    }
+
+    // Find and validate the slot
+    const slot = await this.prisma.appointmentSlot.findUnique({
+      where: { id: slot_id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+          },
+        },
+      },
+    });
+
+    if (!slot) {
+      throw new BadRequestException('Appointment slot not found');
+    }
+
+    // Validate that the slot belongs to the specified doctor
+    if (slot.user_id !== doctor_id) {
+      throw new BadRequestException(
+        `This slot belongs to Dr. ${slot.user.first_name} ${slot.user.last_name}, not the specified doctor`,
+      );
+    }
+
+    if (slot.is_booked) {
+      throw new BadRequestException('Appointment slot is already booked');
+    }
+
+    // Check if slot is in the future
+    const slotDateTime = new Date(slot.slot_date);
+    const [hours, minutes] = slot.start_time.split(':').map(Number);
+    slotDateTime.setHours(hours, minutes);
+
+    if (slotDateTime <= new Date()) {
+      throw new BadRequestException('Cannot book appointment in the past');
+    }
+
+    // Check if patient already has an appointment with this doctor on the same date
+    const existingAppointment = await this.prisma.appointment.findFirst({
+      where: {
+        user_id: patient_id,
+        slot: {
+          user_id: doctor_id,
+          slot_date: slot.slot_date,
+        },
+      },
+    });
+
+    if (existingAppointment) {
+      throw new BadRequestException(
+        'You already have an appointment with this doctor on this date',
+      );
+    }
+
+    // Use transaction to ensure data consistency
+    const result = await this.prisma.$transaction(async (prisma) => {
+      // Mark slot as booked
+      await prisma.appointmentSlot.update({
+        where: { id: slot_id },
+        data: { is_booked: true },
+      });
+
+      // Create appointment
+      const appointment = await prisma.appointment.create({
+        data: {
+          slot_id,
+          user_id: patient_id,
+          notes: notes || null,
+        },
+        include: {
+          slot: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  first_name: true,
+                  last_name: true,
+                  DoctorProfile: {
+                    select: {
+                      specialization: true,
+                      hospital: true,
+                      fee: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true,
+              email: true,
+              phone_number: true,
+            },
+          },
+        },
+      });
+
+      return appointment;
+    });
+
+    // Format the response
+    const formattedAppointment = {
+      id: result.id,
+      status: result.status,
+      notes: result.notes,
+      patient: result.user,
+      doctor: {
+        id: result.slot.user.id,
+        name: `${result.slot.user.first_name} ${result.slot.user.last_name}`,
+        specialization: result.slot.user.DoctorProfile?.specialization,
+        hospital: result.slot.user.DoctorProfile?.hospital,
+        fee: result.slot.user.DoctorProfile?.fee,
+      },
+      appointment_details: {
+        date: format(new Date(result.slot.slot_date), 'yyyy-MM-dd'),
+        day: format(new Date(result.slot.slot_date), 'EEEE'),
+        start_time: result.slot.start_time,
+        end_time: result.slot.end_time,
+      },
+      created_at: result.created_at,
+    };
+
+    return {
+      success: true,
+      appointment: formattedAppointment,
+      message: `Appointment booked successfully with Dr. ${doctor.first_name} ${doctor.last_name}`,
+    };
+  }
+
+  // NEW METHOD: Get all available doctors
+  async getAvailableDoctors() {
+    const doctors = await this.prisma.user.findMany({
+      where: {
+        role: { role_name: 'doctor' },
+        DoctorAvailability: {
+          some: {}, // Has availability set
+        },
+      },
+      select: {
+        id: true,
+        first_name: true,
+        last_name: true,
+        DoctorProfile: {
+          select: {
+            specialization: true,
+            hospital: true,
+            fee: true,
+            rating: true,
+            years_of_experience: true,
+          },
+        },
+        DoctorAvailability: {
+          select: {
+            start_time: true,
+            end_time: true,
+            appointment_duration_mins: true,
+            available_days: {
+              select: {
+                day_of_week: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            AppointmentSlot: {
+              where: {
+                is_booked: false,
+                slot_date: {
+                  gte: startOfDay(new Date()),
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      doctors: doctors.map((doctor) => ({
+        id: doctor.id,
+        name: `${doctor.first_name} ${doctor.last_name}`,
+        specialization:
+          doctor.DoctorProfile?.specialization || 'General Practice',
+        hospital: doctor.DoctorProfile?.hospital,
+        fee: doctor.DoctorProfile?.fee,
+        rating: doctor.DoctorProfile?.rating,
+        years_of_experience: doctor.DoctorProfile?.years_of_experience,
+        availability: {
+          working_hours: doctor.DoctorAvailability[0]
+            ? {
+                start_time: doctor.DoctorAvailability[0].start_time,
+                end_time: doctor.DoctorAvailability[0].end_time,
+                slot_duration:
+                  doctor.DoctorAvailability[0].appointment_duration_mins,
+              }
+            : null,
+          available_days:
+            doctor.DoctorAvailability[0]?.available_days.map(
+              (d) => d.day_of_week,
+            ) || [],
+        },
+        available_slots_count: doctor._count.AppointmentSlot,
+      })),
+    };
+  }
+
+  // EXISTING METHODS BELOW (keep all your existing methods)
 
   async createAvailability(
     dto: CreateDoctorAvailabilityDto & { doctor_id: number },
@@ -45,39 +287,20 @@ export class DoctorAvailabilityService {
     });
 
     if (!doctor) {
-      throw new BadRequestException('Doctor not found or invalid role');
+      throw new BadRequestException('Doctor not found');
     }
 
     // Validate time format and logic
     this.validateTimeSlots(start_time, end_time, slot_duration_minutes);
 
-    // Get current availability to compare weekdays
-    const currentAvailability = await this.prisma.doctorAvailability.findFirst({
+    let availability = await this.prisma.doctorAvailability.findFirst({
       where: { user_id: doctor_id },
-      include: {
-        available_days: true,
-      },
     });
 
-    let availability;
-    let removedDays: string[] = [];
-
-    if (currentAvailability) {
-      // Check which days are being removed
-      const currentDays = currentAvailability.available_days.map(
-        (d) => d.day_of_week,
-      );
-      const newDays = weekdays.map((d) => d.toLowerCase());
-      removedDays = currentDays.filter((day) => !newDays.includes(day));
-
-      // Cancel appointments for removed days
-      if (removedDays.length > 0) {
-        await this.cancelAppointmentsForRemovedDays(doctor_id, removedDays);
-      }
-
+    if (availability) {
       // Update existing availability
       availability = await this.prisma.doctorAvailability.update({
-        where: { id: currentAvailability.id },
+        where: { id: availability.id },
         data: {
           start_time,
           end_time,
@@ -136,79 +359,8 @@ export class DoctorAvailabilityService {
         available_days: weekdays,
       },
       created_slots_count: createdSlots.length,
-      cancelled_appointments_count:
-        removedDays.length > 0
-          ? await this.getCancelledAppointmentsCount(doctor_id, removedDays)
-          : 0,
-      message: `Successfully updated availability. ${removedDays.length > 0 ? `Cancelled appointments for removed days: ${removedDays.join(', ')}` : ''}`,
+      message: `Successfully created ${createdSlots.length} appointment slots`,
     };
-  }
-
-  private async cancelAppointmentsForRemovedDays(
-    doctor_id: number,
-    removedDays: string[],
-  ) {
-    // Get all future appointments for the doctor on removed days
-    const futureAppointments = await this.prisma.appointment.findMany({
-      where: {
-        slot: {
-          user_id: doctor_id,
-          slot_date: {
-            gte: startOfDay(new Date()),
-          },
-        },
-        status: AppointmentStatus.confirmed,
-      },
-      include: {
-        slot: true,
-      },
-    });
-
-    // Filter appointments that fall on removed days
-    const appointmentsToCancel = futureAppointments.filter((appointment) => {
-      const appointmentDay = appointment.slot.slot_date
-        .toLocaleDateString('en-US', { weekday: 'long' })
-        .toLowerCase();
-      return removedDays.includes(appointmentDay);
-    });
-
-    // Cancel these appointments and free up slots
-    for (const appointment of appointmentsToCancel) {
-      await this.prisma.$transaction(async (prisma) => {
-        // Update appointment status to cancelled
-        await prisma.appointment.update({
-          where: { id: appointment.id },
-          data: {
-            status: AppointmentStatus.cancelled,
-            updated_at: new Date(),
-          },
-        });
-
-        // Free up the slot
-        await prisma.appointmentSlot.update({
-          where: { id: appointment.slot_id },
-          data: { is_booked: false },
-        });
-      });
-    }
-  }
-
-  private async getCancelledAppointmentsCount(
-    doctor_id: number,
-    removedDays: string[],
-  ): Promise<number> {
-    const appointments = await this.prisma.appointment.findMany({
-      where: {
-        slot: {
-          user_id: doctor_id,
-        },
-        status: AppointmentStatus.cancelled,
-        updated_at: {
-          gte: new Date(Date.now() - 5000), // Last 5 seconds
-        },
-      },
-    });
-    return appointments.length;
   }
 
   private validateTimeSlots(
@@ -216,6 +368,7 @@ export class DoctorAvailabilityService {
     end_time: string,
     duration: number,
   ) {
+    // Validate time format (HH:mm)
     const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
 
     if (!timeRegex.test(start_time) || !timeRegex.test(end_time)) {
@@ -330,28 +483,31 @@ export class DoctorAvailabilityService {
     return slots;
   }
 
-  async getAvailability(doctor_id: number, requesting_user_id?: number) {
-    // Validate doctor exists
-    const doctor = await this.prisma.user.findFirst({
-      where: {
-        id: doctor_id,
-        role: { role_name: 'doctor' },
-      },
-    });
-
-    if (!doctor) {
-      throw new NotFoundException('Doctor not found');
-    }
-
+  // UPDATED METHOD: Enhanced getAvailability with slot IDs
+  async getAvailability(doctor_id: number) {
     const availability = await this.prisma.doctorAvailability.findFirst({
       where: { user_id: doctor_id },
       include: {
         available_days: true,
+        user: {
+          select: {
+            first_name: true,
+            last_name: true,
+            DoctorProfile: {
+              select: {
+                specialization: true,
+                hospital: true,
+                fee: true,
+              },
+            },
+          },
+        },
       },
     });
 
     if (!availability) {
       return {
+        success: false,
         availability: null,
         available_slots: [],
         message: 'Doctor has not set availability yet',
@@ -370,21 +526,42 @@ export class DoctorAvailabilityService {
       orderBy: [{ slot_date: 'asc' }, { start_time: 'asc' }],
     });
 
-    // Filter out past slots (same day but past time)
-    const now = new Date();
-    const availableSlots = slots.filter((slot) => {
-      const slotDateTime = new Date(slot.slot_date);
-      const [hours, minutes] = slot.start_time.split(':').map(Number);
-      slotDateTime.setHours(hours, minutes);
-      return isAfter(slotDateTime, now);
-    });
+    // Group slots by date for better organization
+    const slotsByDate = slots.reduce((acc, slot) => {
+      const date = format(new Date(slot.slot_date), 'yyyy-MM-dd');
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push({
+        slot_id: slot.id,
+        start_time: slot.start_time,
+        end_time: slot.end_time,
+        day: format(new Date(slot.slot_date), 'EEEE'),
+      });
+      return acc;
+    }, {});
 
     return {
-      availability: {
-        ...availability,
-        weekdays: availability.available_days.map((day) => day.day_of_week),
+      success: true,
+      doctor: {
+        id: doctor_id,
+        name: `${availability.user.first_name} ${availability.user.last_name}`,
+        specialization: availability.user.DoctorProfile?.specialization,
+        hospital: availability.user.DoctorProfile?.hospital,
+        fee: availability.user.DoctorProfile?.fee,
       },
-      available_slots: availableSlots,
+      availability: {
+        working_hours: {
+          start_time: availability.start_time,
+          end_time: availability.end_time,
+          slot_duration: availability.appointment_duration_mins,
+        },
+        available_days: availability.available_days.map(
+          (day) => day.day_of_week,
+        ),
+      },
+      available_slots: slotsByDate,
+      total_slots: slots.length,
     };
   }
 
@@ -395,7 +572,7 @@ export class DoctorAvailabilityService {
   }) {
     const { patient_id, slot_id, notes } = dto;
 
-    // Validate patient exists and has correct role
+    // Validate patient exists
     const patient = await this.prisma.user.findFirst({
       where: {
         id: patient_id,
@@ -404,7 +581,7 @@ export class DoctorAvailabilityService {
     });
 
     if (!patient) {
-      throw new BadRequestException('Patient not found or invalid role');
+      throw new BadRequestException('Patient not found');
     }
 
     const slot = await this.prisma.appointmentSlot.findUnique({
@@ -427,25 +604,8 @@ export class DoctorAvailabilityService {
     const [hours, minutes] = slot.start_time.split(':').map(Number);
     slotDateTime.setHours(hours, minutes);
 
-    if (isBefore(slotDateTime, new Date())) {
+    if (slotDateTime <= new Date()) {
       throw new BadRequestException('Cannot book appointment in the past');
-    }
-
-    // Check if patient already has an appointment on the same day
-    const existingAppointment = await this.prisma.appointment.findFirst({
-      where: {
-        user_id: patient_id,
-        status: AppointmentStatus.confirmed,
-        slot: {
-          slot_date: slot.slot_date,
-        },
-      },
-    });
-
-    if (existingAppointment) {
-      throw new BadRequestException(
-        'Patient already has an appointment on this day',
-      );
     }
 
     // Use transaction to ensure data consistency
@@ -456,13 +616,12 @@ export class DoctorAvailabilityService {
         data: { is_booked: true },
       });
 
-      // Create appointment with confirmed status by default
+      // Create appointment
       const appointment = await prisma.appointment.create({
         data: {
           slot_id,
           user_id: patient_id,
           notes: notes || null,
-          status: AppointmentStatus.confirmed,
         },
         include: {
           slot: {
@@ -502,47 +661,8 @@ export class DoctorAvailabilityService {
     };
   }
 
-  async getPatientAppointments(patient_id: number, requesting_user_id: number) {
-    // Check if requesting user is the patient or a doctor
-    const requestingUser = await this.prisma.user.findFirst({
-      where: { id: requesting_user_id },
-      include: { role: true },
-    });
-
-    if (!requestingUser) {
-      throw new NotFoundException('Requesting user not found');
-    }
-
-    // Only allow patient to see their own appointments or doctors to see any
-    if (
-      requestingUser.role.role_name === 'patient' &&
-      requesting_user_id !== patient_id
-    ) {
-      throw new ForbiddenException('You can only view your own appointments');
-    }
-
-    if (
-      requestingUser.role.role_name !== 'patient' &&
-      requestingUser.role.role_name !== 'doctor'
-    ) {
-      throw new ForbiddenException(
-        'Only patients and doctors can view appointments',
-      );
-    }
-
-    // Validate patient exists
-    const patient = await this.prisma.user.findFirst({
-      where: {
-        id: patient_id,
-        role: { role_name: 'patient' },
-      },
-    });
-
-    if (!patient) {
-      throw new NotFoundException('Patient not found');
-    }
-
-    return this.prisma.appointment.findMany({
+  async getPatientAppointments(patient_id: number) {
+    const appointments = await this.prisma.appointment.findMany({
       where: { user_id: patient_id },
       include: {
         slot: {
@@ -568,44 +688,22 @@ export class DoctorAvailabilityService {
         },
       },
     });
+
+    // Format the slot dates and add day names
+    const formattedAppointments = appointments.map((appointment) => ({
+      ...appointment,
+      slot: {
+        ...appointment.slot,
+        slot_date: format(new Date(appointment.slot.slot_date), 'yyyy-MM-dd'),
+        day: format(new Date(appointment.slot.slot_date), 'EEEE').toLowerCase(),
+      },
+    }));
+
+    return formattedAppointments;
   }
 
-  async getDoctorAppointments(doctor_id: number, requesting_user_id: number) {
-    // Check if requesting user is the doctor
-    const requestingUser = await this.prisma.user.findFirst({
-      where: { id: requesting_user_id },
-      include: { role: true },
-    });
-
-    if (!requestingUser) {
-      throw new NotFoundException('Requesting user not found');
-    }
-
-    // Only allow doctor to see their own appointments
-    if (
-      requestingUser.role.role_name === 'doctor' &&
-      requesting_user_id !== doctor_id
-    ) {
-      throw new ForbiddenException('You can only view your own appointments');
-    }
-
-    if (requestingUser.role.role_name !== 'doctor') {
-      throw new ForbiddenException('Only doctors can view doctor appointments');
-    }
-
-    // Validate doctor exists
-    const doctor = await this.prisma.user.findFirst({
-      where: {
-        id: doctor_id,
-        role: { role_name: 'doctor' },
-      },
-    });
-
-    if (!doctor) {
-      throw new NotFoundException('Doctor not found');
-    }
-
-    return this.prisma.appointment.findMany({
+  async getDoctorAppointments(doctor_id: number) {
+    const appointments = await this.prisma.appointment.findMany({
       where: {
         slot: {
           user_id: doctor_id,
@@ -628,125 +726,17 @@ export class DoctorAvailabilityService {
         },
       },
     });
-  }
 
-  async updateAppointmentStatus(
-    appointment_id: number,
-    new_status: AppointmentStatus,
-    requesting_user_id: number,
-  ) {
-    const appointment = await this.prisma.appointment.findUnique({
-      where: { id: appointment_id },
-      include: {
-        slot: {
-          include: {
-            user: true, // Doctor
-          },
-        },
-        user: true, // Patient
+    // Format the slot dates and add day names
+    const formattedAppointments = appointments.map((appointment) => ({
+      ...appointment,
+      slot: {
+        ...appointment.slot,
+        slot_date: format(new Date(appointment.slot.slot_date), 'yyyy-MM-dd'),
+        day: format(new Date(appointment.slot.slot_date), 'EEEE').toLowerCase(),
       },
-    });
+    }));
 
-    if (!appointment) {
-      throw new NotFoundException('Appointment not found');
-    }
-
-    // Check if requesting user is either the doctor or the patient
-    const isDoctorUser = appointment.slot.user.id === requesting_user_id;
-    const isPatientUser = appointment.user.id === requesting_user_id;
-
-    if (!isDoctorUser && !isPatientUser) {
-      throw new ForbiddenException('You can only update your own appointments');
-    }
-
-    // Validate status transitions
-    if (appointment.status === AppointmentStatus.completed) {
-      throw new BadRequestException('Cannot modify completed appointments');
-    }
-
-    if (new_status === AppointmentStatus.completed && !isDoctorUser) {
-      throw new ForbiddenException(
-        'Only doctors can mark appointments as completed',
-      );
-    }
-
-    // Use transaction for status update
-    const result = await this.prisma.$transaction(async (prisma) => {
-      const updatedAppointment = await prisma.appointment.update({
-        where: { id: appointment_id },
-        data: {
-          status: new_status,
-          updated_at: new Date(),
-        },
-        include: {
-          slot: true,
-          user: {
-            select: {
-              first_name: true,
-              last_name: true,
-              email: true,
-            },
-          },
-        },
-      });
-
-      // If cancelled, free up the slot (only if not past)
-      if (new_status === AppointmentStatus.cancelled) {
-        const slotDateTime = new Date(appointment.slot.slot_date);
-        const [hours, minutes] = appointment.slot.start_time
-          .split(':')
-          .map(Number);
-        slotDateTime.setHours(hours, minutes);
-
-        // Only free up slot if it's in the future
-        if (isAfter(slotDateTime, new Date())) {
-          await prisma.appointmentSlot.update({
-            where: { id: appointment.slot.id },
-            data: { is_booked: false },
-          });
-        }
-      }
-
-      return updatedAppointment;
-    });
-
-    return {
-      appointment: result,
-      message: `Appointment ${new_status} successfully`,
-    };
-  }
-
-  // Cron job method to auto-cancel missed appointments
-  async autoCancelMissedAppointments() {
-    const yesterday = addDays(new Date(), -1);
-
-    const missedAppointments = await this.prisma.appointment.findMany({
-      where: {
-        status: AppointmentStatus.confirmed,
-        slot: {
-          slot_date: {
-            lt: startOfDay(yesterday),
-          },
-        },
-      },
-      include: {
-        slot: true,
-      },
-    });
-
-    for (const appointment of missedAppointments) {
-      await this.prisma.appointment.update({
-        where: { id: appointment.id },
-        data: {
-          status: AppointmentStatus.cancelled,
-          updated_at: new Date(),
-        },
-      });
-    }
-
-    return {
-      cancelled_count: missedAppointments.length,
-      message: `Auto-cancelled ${missedAppointments.length} missed appointments`,
-    };
+    return formattedAppointments;
   }
 }

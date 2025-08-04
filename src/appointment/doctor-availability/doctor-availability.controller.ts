@@ -7,55 +7,42 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { DoctorAvailabilityService } from './doctor-availability.service';
+import { SlotGenerationService } from './slot-generation.service';
 import { CreateDoctorAvailabilityDto } from './dto/create-availability.dto';
 
-@Controller('doctor-availability')
+@Controller('DoctorAvailability')
 export class DoctorAvailabilityController {
   constructor(
     private readonly doctorAvailabilityService: DoctorAvailabilityService,
+    private readonly slotGenerationService: SlotGenerationService,
   ) {}
 
-  // Create/Update doctor availability: /doctor-availability/5
-  @Post(':doctor_id')
+  @Post(':doctorId')
   async createAvailability(
-    @Param('doctor_id', ParseIntPipe) doctor_id: number,
+    @Param('doctorId', ParseIntPipe) doctorId: number,
     @Body() dto: CreateDoctorAvailabilityDto,
   ) {
     return this.doctorAvailabilityService.createAvailability({
-      doctor_id,
+      doctor_id: doctorId,
       ...dto,
     });
   }
 
-  // Get doctor availability: /doctor-availability/user/3/doctor/5
-  @Get('user/:requesting_user_id/doctor/:doctor_id')
-  async getAvailability(
-    @Param('requesting_user_id', ParseIntPipe) requesting_user_id: number,
-    @Param('doctor_id', ParseIntPipe) doctor_id: number,
-  ) {
-    return this.doctorAvailabilityService.getAvailability(
-      doctor_id,
-      requesting_user_id,
-    );
+  @Get(':doctorId')
+  async getAvailability(@Param('doctorId', ParseIntPipe) doctorId: number) {
+    return this.doctorAvailabilityService.getAvailability(doctorId);
   }
 
-  // Get doctor appointments: /doctor-availability/user/5/doctor/5/appointments
-  @Get('user/:requesting_user_id/doctor/:doctor_id/appointments')
+  @Get(':doctorId/appointments')
   async getDoctorAppointments(
-    @Param('requesting_user_id', ParseIntPipe) requesting_user_id: number,
-    @Param('doctor_id', ParseIntPipe) doctor_id: number,
+    @Param('doctorId', ParseIntPipe) doctorId: number,
   ) {
-    return this.doctorAvailabilityService.getDoctorAppointments(
-      doctor_id,
-      requesting_user_id,
-    );
+    return this.doctorAvailabilityService.getDoctorAppointments(doctorId);
   }
 
-  // Alternative: Public doctor availability (no user auth needed)
-  @Get('public/doctor/:doctor_id')
-  async getPublicAvailability(
-    @Param('doctor_id', ParseIntPipe) doctor_id: number,
-  ) {
-    return this.doctorAvailabilityService.getAvailability(doctor_id);
+  // Manual trigger for testing (optional)
+  @Post('admin/generate-slots')
+  async generateSlots() {
+    return this.slotGenerationService.generateSlotsManually();
   }
 }
