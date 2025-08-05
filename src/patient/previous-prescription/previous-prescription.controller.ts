@@ -46,7 +46,7 @@ export class PreviousPrescriptionController {
     return this.service.findAll(+userId);
   }
 
-  @Get('single/:Id')
+  @Get('Single/:Id')
   async findOne(@Param('Id') Id: number) {
     return this.service.findOne(+Id);
   }

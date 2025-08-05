@@ -78,13 +78,24 @@ export class AppointmentController {
     return this.doctorAvailabilityService.updateAppointmentStatus(Id, Status);
   }
 
-  @Get('DailyNewPatientsLast7Days/:doctorId')
-  async getDailyNewPatients(@Param('doctorId', ParseIntPipe) doctorId: number) {
-    return this.doctorAvailabilityService.getDailyNewPatientsForLast7Days(doctorId);
+  @Get('Doctor/:DoctorId/AllSlots')
+  async getDoctorAllSlots(@Param('DoctorId', ParseIntPipe) DoctorId: number) {
+    return this.doctorAvailabilityService.getSpecificDoctorAllSlots(DoctorId);
   }
 
-   @Get('DailyAppointmentsLast7Days/:doctorId')
-  async getDailyAppointmentCounts(@Param('doctorId', ParseIntPipe) doctorId: number) {
-    return this.doctorAvailabilityService.getDailyAppointmentCountsLast7Days(doctorId);
+  @Get('DailyNewPatientsLast7Days/:doctorId')
+  async getDailyNewPatients(@Param('doctorId', ParseIntPipe) doctorId: number) {
+    return this.doctorAvailabilityService.getDailyNewPatientsForLast7Days(
+      doctorId,
+    );
+  }
+
+  @Get('DailyAppointmentsLast7Days/:doctorId')
+  async getDailyAppointmentCounts(
+    @Param('doctorId', ParseIntPipe) doctorId: number,
+  ) {
+    return this.doctorAvailabilityService.getDailyAppointmentCountsLast7Days(
+      doctorId,
+    );
   }
 }
