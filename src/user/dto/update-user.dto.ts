@@ -6,6 +6,7 @@ import {
   IsNumber,
   ValidateNested,
   IsUrl,
+  IsInt,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -91,6 +92,10 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   country?: string;
+
+  @IsOptional()
+  @IsInt()
+  profile_image_id?: number;
 
   @IsOptional()
   @ValidateNested()
