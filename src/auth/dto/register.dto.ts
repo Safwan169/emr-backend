@@ -18,7 +18,7 @@ export class RegisterDto {
   email: string;
 
   @IsNotEmpty({ message: 'Password is required' })
-  @Length(6, 10, { message: 'Password must be between 6 and 10 characters' })
+  @Length(6, 20, { message: 'Password must be between 6 and 20 characters' })
   password: string;
 
   @IsNotEmpty({ message: 'Date of birth is required' })
