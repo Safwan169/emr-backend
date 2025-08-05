@@ -3,7 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateDoctorAvailabilityDto } from './dto/create-availability.dto';
 import { addMinutes, format, startOfDay } from 'date-fns';
 import { WeekDayEnum, AppointmentSlot } from '@prisma/client';
-import { subDays,endOfDay, differenceInYears } from 'date-fns';
+import { subDays, endOfDay, differenceInYears } from 'date-fns';
 import { AppointmentStatus } from '@prisma/client';
 
 type Slot = {
@@ -1131,13 +1131,11 @@ export class DoctorAvailabilityService {
       throw new Error('Appointment not found');
     }
 
-  return this.prisma.appointment.update({
-    where: { id: appointmentId },
-    data: { status: newStatus },
-  });
-}
-
-
+    return this.prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status: newStatus },
+    });
+  }
 
   async getDailyNewPatientsForLast7Days(doctorId: number) {
     const today = new Date();
@@ -1197,7 +1195,7 @@ export class DoctorAvailabilityService {
     return result;
   }
 
- async getDailyAppointmentCountsLast7Days(doctorId: number) {
+  async getDailyAppointmentCountsLast7Days(doctorId: number) {
     const today = new Date();
     const sevenDaysAgo = subDays(today, 6); // last 7 days including today
 
@@ -1238,5 +1236,4 @@ export class DoctorAvailabilityService {
 
     return result;
   }
-
 }
