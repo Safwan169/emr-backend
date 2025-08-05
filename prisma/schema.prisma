@@ -40,6 +40,9 @@ model User {
   blood_pressure String?
   heart_bit_rate String?
 
+  fileId Int?
+  File   File? @relation(fields: [fileId], references: [id])
+
   otp Otp[]
 
   allergies    Allergy[]
@@ -60,8 +63,6 @@ model User {
   SurgicalHistory         SurgicalHistory[]
   VaccineHistory          VaccineHistory[]
   DoctorProfile           DoctorProfile?
-  File                    File?                     @relation(fields: [fileId], references: [id])
-  fileId                  Int?
   DoctorAvailability      DoctorAvailability[]
   AppointmentSlot         AppointmentSlot[]
   Appointment             Appointment[]

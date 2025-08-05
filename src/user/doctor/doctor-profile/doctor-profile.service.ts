@@ -25,7 +25,11 @@ export class DoctorProfileService {
     this.logger.log('📋 Fetching all doctor profiles...');
     const doctors = await this.prisma.doctorProfile.findMany({
       include: {
-        user: true,
+        user: {
+          include: {
+            profile_image: true,
+          },
+        },
         test_voice_file: true,
         DoctorCertification: true,
         DoctorProfileEducationAndQualification: true,
@@ -44,7 +48,11 @@ export class DoctorProfileService {
     const profile = await this.prisma.doctorProfile.findUnique({
       where: { user_id: userId },
       include: {
-        user: true,
+        user: {
+          include: {
+            profile_image: true,
+          },
+        },
         test_voice_file: true,
         DoctorCertification: true,
         DoctorProfileEducationAndQualification: true,
@@ -165,12 +173,17 @@ export class DoctorProfileService {
 
     const profile = await this.prisma.doctorProfile.upsert({
       where: { user_id: userId },
+      include: {
+        test_voice_file: true,
+        // also add user with file
+        user: { include: { profile_image: true } },
+      },
       create: dataToSave,
       update: dataToSave,
     });
 
     this.logger.log(
-      `✅ Doctor profile saved for userId=${userId} with profileId=${profile.id}`,
+      `✅ Doctor profile saved for userId=${userId} with doctor-profileId=${profile.id}`,
     );
 
     return profile;
