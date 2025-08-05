@@ -3,7 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateDoctorAvailabilityDto } from './dto/create-availability.dto';
 import { addMinutes, format, startOfDay } from 'date-fns';
 import { WeekDayEnum, AppointmentSlot } from '@prisma/client';
-import { endOfDay, differenceInYears } from 'date-fns';
+import { subDays,endOfDay, differenceInYears } from 'date-fns';
 import { AppointmentStatus } from '@prisma/client';
 
 
@@ -907,5 +907,104 @@ async updateAppointmentStatus(appointmentId: number, newStatus: AppointmentStatu
 
 
 
+  async getDailyNewPatientsForLast7Days(doctorId: number) {
+    const today = new Date();
+    const sevenDaysAgo = subDays(today, 6); // include today
+
+    // Get all appointments of last 7 days
+    const appointments = await this.prisma.appointment.findMany({
+      where: {
+        slot: {
+          user_id: doctorId,
+        },
+        created_at: {
+          gte: startOfDay(sevenDaysAgo),
+          lte: endOfDay(today),
+        },
+      },
+      select: {
+        user_id: true, // patient ID
+        created_at: true,
+      },
+      orderBy: {
+        created_at: 'asc',
+      },
+    });
+
+    // Group by patient and track their first appointment with doctor
+    const firstAppointments = new Map<number, Date>();
+
+    appointments.forEach((appointment) => {
+      const { user_id, created_at } = appointment;
+      if (!firstAppointments.has(user_id)) {
+        firstAppointments.set(user_id, created_at);
+      }
+    });
+
+    // Count how many first appointments happened each day
+    const countsByDate: Record<string, number> = {};
+
+    for (let i = 0; i < 7; i++) {
+      const day = subDays(today, i);
+      const dayStr = format(day, 'yyyy-MM-dd');
+      countsByDate[dayStr] = 0;
+    }
+
+    firstAppointments.forEach((date) => {
+      const dayStr = format(date, 'yyyy-MM-dd');
+      if (countsByDate[dayStr] !== undefined) {
+        countsByDate[dayStr]++;
+      }
+    });
+
+    // Return sorted by date ascending
+    const result = Object.entries(countsByDate)
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    return result;
+  }
+
+ async getDailyAppointmentCountsLast7Days(doctorId: number) {
+    const today = new Date();
+    const sevenDaysAgo = subDays(today, 6); // last 7 days including today
+
+    const appointments = await this.prisma.appointment.findMany({
+      where: {
+        slot: {
+          user_id: doctorId, // doctor via AppointmentSlot.user_id
+        },
+        created_at: {
+          gte: startOfDay(sevenDaysAgo),
+          lte: endOfDay(today),
+        },
+      },
+      select: {
+        created_at: true,
+      },
+    });
+
+    // Initialize date buckets
+    const countsByDate: Record<string, number> = {};
+
+    for (let i = 0; i < 7; i++) {
+      const day = subDays(today, i);
+      const dayStr = format(day, 'yyyy-MM-dd');
+      countsByDate[dayStr] = 0;
+    }
+
+    appointments.forEach(({ created_at }) => {
+      const dateStr = format(created_at, 'yyyy-MM-dd');
+      if (countsByDate[dateStr] !== undefined) {
+        countsByDate[dateStr]++;
+      }
+    });
+
+    const result = Object.entries(countsByDate)
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    return result;
+  }
 
 }
