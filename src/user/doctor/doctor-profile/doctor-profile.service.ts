@@ -189,142 +189,73 @@ export class DoctorProfileService {
     return profile;
   }
 
-  async createOrUpdateDoctorEducation(
-    userId: number,
-    dto: CreateDoctorEducationDto,
-  ) {
-    this.logger.log(`✏️ Creating/updating education for userId=${userId}...`);
+  // ==================== EDUCATION METHODS ====================
+
+  async createDoctorEducation(userId: number, dto: CreateDoctorEducationDto) {
+    this.logger.log(`✏️ Creating new education for userId=${userId}...`);
 
     const profile = await this.getDoctorProfileByUserId(userId);
 
-    if (dto.id) {
-      const existing =
-        await this.prisma.doctorProfileEducationAndQualification.findUnique({
-          where: { id: dto.id },
-        });
-      if (!existing) {
-        this.logger.warn(`⚠️ Education id=${dto.id} not found for update`);
-        throw new NotFoundException('Doctor education not found');
-      }
-      const updated =
-        await this.prisma.doctorProfileEducationAndQualification.update({
-          where: { id: dto.id },
-          data: {
-            title: dto.title,
-            institution: dto.institution,
-            achievement: dto.achievement,
-            timeline: dto.timeline,
-          },
-        });
-      this.logger.log(`✅ Updated education id=${dto.id} for userId=${userId}`);
-      return updated;
-    } else {
-      const created =
-        await this.prisma.doctorProfileEducationAndQualification.create({
-          data: {
-            title: dto.title,
-            institution: dto.institution,
-            achievement: dto.achievement,
-            timeline: dto.timeline,
-            doctor_profile_id: profile.id,
-          },
-        });
-      this.logger.log(
-        `✅ Created new education id=${created.id} for userId=${userId}`,
-      );
-      return created;
-    }
+    const created =
+      await this.prisma.doctorProfileEducationAndQualification.create({
+        data: {
+          title: dto.title,
+          institution: dto.institution,
+          achievement: dto.achievement,
+          timeline: dto.timeline,
+          doctor_profile_id: profile.id,
+        },
+      });
+
+    this.logger.log(
+      `✅ Created new education id=${created.id} for userId=${userId}`,
+    );
+    return created;
   }
 
-  async createOrUpdateDoctorCertification(
+  async updateDoctorEducation(
     userId: number,
-    dto: CreateDoctorCertificationDto,
+    educationId: number,
+    dto: CreateDoctorEducationDto,
   ) {
     this.logger.log(
-      `✏️ Creating/updating certification for userId=${userId}...`,
+      `✏️ Updating education id=${educationId} for userId=${userId}...`,
     );
 
     const profile = await this.getDoctorProfileByUserId(userId);
 
-    if (dto.id) {
-      const existing = await this.prisma.doctorCertification.findUnique({
-        where: { id: dto.id },
+    const existing =
+      await this.prisma.doctorProfileEducationAndQualification.findUnique({
+        where: { id: educationId },
       });
-      if (!existing) {
-        this.logger.warn(`⚠️ Certification id=${dto.id} not found for update`);
-        throw new NotFoundException('Doctor certification not found');
-      }
-      const updated = await this.prisma.doctorCertification.update({
-        where: { id: dto.id },
-        data: {
-          name: dto.name,
-          certified_year: dto.certified_year,
-          validation_year: dto.validation_year,
-          institution: dto.institution,
-        },
-      });
-      this.logger.log(
-        `✅ Updated certification id=${dto.id} for userId=${userId}`,
-      );
-      return updated;
-    } else {
-      const created = await this.prisma.doctorCertification.create({
-        data: {
-          name: dto.name,
-          certified_year: dto.certified_year,
-          validation_year: dto.validation_year,
-          institution: dto.institution,
-          doctor_profile_id: profile.id,
-        },
-      });
-      this.logger.log(
-        `✅ Created new certification id=${created.id} for userId=${userId}`,
-      );
-      return created;
+
+    if (!existing) {
+      this.logger.warn(`⚠️ Education id=${educationId} not found for update`);
+      throw new NotFoundException('Doctor education not found');
     }
-  }
 
-  async createOrUpdateDoctorResearch(
-    userId: number,
-    dto: CreateDoctorResearchDto,
-  ) {
-    this.logger.log(`✏️ Creating/updating research for userId=${userId}...`);
-
-    const profile = await this.getDoctorProfileByUserId(userId);
-
-    if (dto.id) {
-      const existing =
-        await this.prisma.doctorResearchAndPublication.findUnique({
-          where: { id: dto.id },
-        });
-      if (!existing) {
-        this.logger.warn(`⚠️ Research id=${dto.id} not found for update`);
-        throw new NotFoundException('Doctor research/publication not found');
-      }
-      const updated = await this.prisma.doctorResearchAndPublication.update({
-        where: { id: dto.id },
-        data: {
-          research_name: dto.research_name,
-          publication_year: dto.publication_year,
-          published_by: dto.published_by,
-        },
-      });
-      this.logger.log(`✅ Updated research id=${dto.id} for userId=${userId}`);
-      return updated;
-    } else {
-      const created = await this.prisma.doctorResearchAndPublication.create({
-        data: {
-          research_name: dto.research_name,
-          publication_year: dto.publication_year,
-          published_by: dto.published_by,
-          doctor_profile_id: profile.id,
-        },
-      });
-      this.logger.log(
-        `✅ Created new research id=${created.id} for userId=${userId}`,
+    if (existing.doctor_profile_id !== profile.id) {
+      this.logger.warn(
+        `❌ Education id=${educationId} does not belong to userId=${userId}`,
       );
-      return created;
+      throw new BadRequestException('Education does not belong to the doctor');
     }
+
+    const updated =
+      await this.prisma.doctorProfileEducationAndQualification.update({
+        where: { id: educationId },
+        data: {
+          title: dto.title,
+          institution: dto.institution,
+          achievement: dto.achievement,
+          timeline: dto.timeline,
+        },
+      });
+
+    this.logger.log(
+      `✅ Updated education id=${educationId} for userId=${userId}`,
+    );
+    return updated;
   }
 
   async deleteDoctorEducation(userId: number, educationId: number) {
@@ -358,6 +289,79 @@ export class DoctorProfileService {
       `✅ Deleted education id=${educationId} for userId=${userId}`,
     );
     return { message: 'Doctor education deleted successfully' };
+  }
+
+  // ==================== CERTIFICATION METHODS ====================
+
+  async createDoctorCertification(
+    userId: number,
+    dto: CreateDoctorCertificationDto,
+  ) {
+    this.logger.log(`✏️ Creating new certification for userId=${userId}...`);
+
+    const profile = await this.getDoctorProfileByUserId(userId);
+
+    const created = await this.prisma.doctorCertification.create({
+      data: {
+        name: dto.name,
+        certified_year: dto.certified_year,
+        validation_year: dto.validation_year,
+        institution: dto.institution,
+        doctor_profile_id: profile.id,
+      },
+    });
+
+    this.logger.log(
+      `✅ Created new certification id=${created.id} for userId=${userId}`,
+    );
+    return created;
+  }
+
+  async updateDoctorCertification(
+    userId: number,
+    certificationId: number,
+    dto: CreateDoctorCertificationDto,
+  ) {
+    this.logger.log(
+      `✏️ Updating certification id=${certificationId} for userId=${userId}...`,
+    );
+
+    const profile = await this.getDoctorProfileByUserId(userId);
+
+    const existing = await this.prisma.doctorCertification.findUnique({
+      where: { id: certificationId },
+    });
+
+    if (!existing) {
+      this.logger.warn(
+        `⚠️ Certification id=${certificationId} not found for update`,
+      );
+      throw new NotFoundException('Doctor certification not found');
+    }
+
+    if (existing.doctor_profile_id !== profile.id) {
+      this.logger.warn(
+        `❌ Certification id=${certificationId} does not belong to userId=${userId}`,
+      );
+      throw new BadRequestException(
+        'Certification does not belong to the doctor',
+      );
+    }
+
+    const updated = await this.prisma.doctorCertification.update({
+      where: { id: certificationId },
+      data: {
+        name: dto.name,
+        certified_year: dto.certified_year,
+        validation_year: dto.validation_year,
+        institution: dto.institution,
+      },
+    });
+
+    this.logger.log(
+      `✅ Updated certification id=${certificationId} for userId=${userId}`,
+    );
+    return updated;
   }
 
   async deleteDoctorCertification(userId: number, certificationId: number) {
@@ -394,6 +398,70 @@ export class DoctorProfileService {
       `✅ Deleted certification id=${certificationId} for userId=${userId}`,
     );
     return { message: 'Doctor certification deleted successfully' };
+  }
+
+  // ==================== RESEARCH METHODS ====================
+
+  async createDoctorResearch(userId: number, dto: CreateDoctorResearchDto) {
+    this.logger.log(`✏️ Creating new research for userId=${userId}...`);
+
+    const profile = await this.getDoctorProfileByUserId(userId);
+
+    const created = await this.prisma.doctorResearchAndPublication.create({
+      data: {
+        research_name: dto.research_name,
+        publication_year: dto.publication_year,
+        published_by: dto.published_by,
+        doctor_profile_id: profile.id,
+      },
+    });
+
+    this.logger.log(
+      `✅ Created new research id=${created.id} for userId=${userId}`,
+    );
+    return created;
+  }
+
+  async updateDoctorResearch(
+    userId: number,
+    researchId: number,
+    dto: CreateDoctorResearchDto,
+  ) {
+    this.logger.log(
+      `✏️ Updating research id=${researchId} for userId=${userId}...`,
+    );
+
+    const profile = await this.getDoctorProfileByUserId(userId);
+
+    const existing = await this.prisma.doctorResearchAndPublication.findUnique({
+      where: { id: researchId },
+    });
+
+    if (!existing) {
+      this.logger.warn(`⚠️ Research id=${researchId} not found for update`);
+      throw new NotFoundException('Doctor research/publication not found');
+    }
+
+    if (existing.doctor_profile_id !== profile.id) {
+      this.logger.warn(
+        `❌ Research id=${researchId} does not belong to userId=${userId}`,
+      );
+      throw new BadRequestException('Research does not belong to the doctor');
+    }
+
+    const updated = await this.prisma.doctorResearchAndPublication.update({
+      where: { id: researchId },
+      data: {
+        research_name: dto.research_name,
+        publication_year: dto.publication_year,
+        published_by: dto.published_by,
+      },
+    });
+
+    this.logger.log(
+      `✅ Updated research id=${researchId} for userId=${userId}`,
+    );
+    return updated;
   }
 
   async deleteDoctorResearch(userId: number, researchId: number) {
