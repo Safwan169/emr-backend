@@ -1317,7 +1317,7 @@ export class EmailService {
                 </div>
 
                 <p class="warning-text">
-                  Please change your temporary password after your first login for security purposes.
+                  For security purposes, please log in to your account and reset your temporary password using the "Forgot Password" option after your first login.
                 </p>
 
                 <p class="info-text">
@@ -1345,6 +1345,274 @@ export class EmailService {
     } catch (error) {
       this.logger.error(
         `[👤 User Account Created] ❌ Failed to send user account creation email to ${userData.email}:`,
+        error,
+      );
+    }
+  }
+
+  // ===============================
+  // FORGOT PASSWORD
+  // ===============================
+
+  // Send forgot password OTP email
+  async sendForgotPasswordOtpEmail(
+    email: string,
+    otpCode: string,
+  ): Promise<void> {
+    try {
+      const mailOptions = {
+        from: process.env.SMTP_FROM || 'noreply@yourapp.com',
+        to: email,
+        subject: 'Password Reset - Your OTP Code',
+        html: `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Password Reset OTP</title>
+          <style>
+            body {
+              margin: 0; 
+              padding: 0; 
+              background-color: #f9fafc; 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+                Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+              color: #333333;
+            }
+            .container {
+              max-width: 600px;
+              margin: 30px auto;
+              background: #ffffff;
+              border-radius: 12px;
+              box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+              overflow: hidden;
+            }
+            .header {
+              background: linear-gradient(90deg, #dc3545, #fd7e14);
+              padding: 25px;
+              text-align: center;
+              color: white;
+              font-size: 22px;
+              font-weight: 700;
+              letter-spacing: 1px;
+            }
+            .content {
+              padding: 40px 30px;
+              text-align: center;
+            }
+            .otp-code {
+              font-size: 48px;
+              font-weight: 700;
+              background: #dc3545;
+              color: white;
+              padding: 20px 40px;
+              border-radius: 10px;
+              letter-spacing: 8px;
+              display: inline-block;
+              margin: 30px 0;
+              user-select: all;
+            }
+            .info {
+              font-size: 16px;
+              margin-bottom: 30px;
+              line-height: 1.5;
+              color: #555555;
+            }
+            .warning {
+              font-size: 14px;
+              color: #dc3545;
+              background: #f8d7da;
+              padding: 15px;
+              border-radius: 8px;
+              margin: 20px 0;
+              border-left: 4px solid #dc3545;
+            }
+            .footer {
+              background: #f0f2f5;
+              text-align: center;
+              padding: 20px 15px;
+              font-size: 12px;
+              color: #999999;
+              user-select: none;
+            }
+            @media (max-width: 480px) {
+              .otp-code {
+                font-size: 36px;
+                padding: 15px 25px;
+                letter-spacing: 5px;
+              }
+              .content {
+                padding: 30px 20px;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">🔑 Password Reset Request</div>
+            <div class="content">
+              <p class="info">
+                You requested to reset your password. Use the code below to proceed:
+              </p>
+              <div class="otp-code">${otpCode}</div>
+              <p class="info">
+                This code is valid for <strong>2 minutes</strong>. Enter this code to verify your identity and reset your password.
+              </p>
+              <div class="warning">
+                ⚠️ If you didn't request this password reset, please ignore this email and secure your account immediately.
+              </div>
+            </div>
+            <div class="footer">
+              &copy; ${new Date().getFullYear()} Safedrops Canada Inc. All rights reserved.
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`[🔑 Forgot Password OTP] ✅ OTP sent to: ${email}`);
+    } catch (error) {
+      this.logger.error(
+        `[🔑 Forgot Password OTP] ❌ Failed to send OTP to ${email}:`,
+        error,
+      );
+      throw new Error('Failed to send password reset OTP email');
+    }
+  }
+
+  // Send password reset confirmation email
+  async sendPasswordResetConfirmationEmail(
+    email: string,
+    firstName: string,
+  ): Promise<void> {
+    try {
+      const mailOptions = {
+        from: process.env.SMTP_FROM || 'noreply@yourapp.com',
+        to: email,
+        subject: 'Password Reset Successful',
+        html: `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Password Reset Successful</title>
+          <style>
+            body {
+              margin: 0; 
+              padding: 0; 
+              background-color: #f9fafc; 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+                Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+              color: #333333;
+            }
+            .container {
+              max-width: 600px;
+              margin: 30px auto;
+              background: #ffffff;
+              border-radius: 12px;
+              box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+              overflow: hidden;
+            }
+            .header {
+              background: linear-gradient(90deg, #28a745, #20c997);
+              padding: 25px;
+              text-align: center;
+              color: white;
+              font-size: 22px;
+              font-weight: 700;
+              letter-spacing: 1px;
+            }
+            .content {
+              padding: 40px 30px;
+              text-align: center;
+            }
+            .success-icon {
+              font-size: 64px;
+              color: #28a745;
+              margin: 20px 0;
+            }
+            .info {
+              font-size: 16px;
+              margin-bottom: 20px;
+              line-height: 1.5;
+              color: #555555;
+            }
+            .security-tips {
+              background: #e7f3ff;
+              border-left: 4px solid #007bff;
+              padding: 20px;
+              margin: 25px 0;
+              text-align: left;
+              border-radius: 0 8px 8px 0;
+            }
+            .tip-title {
+              font-weight: 600;
+              color: #007bff;
+              margin-bottom: 10px;
+            }
+            .tip-list {
+              font-size: 14px;
+              color: #666;
+              line-height: 1.4;
+            }
+            .footer {
+              background: #f0f2f5;
+              text-align: center;
+              padding: 20px 15px;
+              font-size: 12px;
+              color: #999999;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">✅ Password Reset Successful</div>
+            <div class="content">
+              <div class="success-icon">🔐</div>
+              <p class="info">
+                Hi ${firstName},<br><br>
+                Your password has been successfully reset! You can now log in to your account using your new password.
+              </p>
+              
+              <div class="security-tips">
+                <div class="tip-title">🛡️ Security Tips:</div>
+                <div class="tip-list">
+                  • Use a strong, unique password<br>
+                  • Don't share your password with anyone<br>
+                  • Enable two-factor authentication if available<br>
+                  • Log out from shared devices
+                </div>
+              </div>
+
+              <p class="info">
+                If you didn't perform this password reset, please contact our support team immediately.
+              </p>
+              
+              <p style="font-size: 14px; color: #888; margin-top: 30px;">
+                Reset completed at: ${new Date().toLocaleString()}
+              </p>
+            </div>
+            <div class="footer">
+              &copy; ${new Date().getFullYear()} Safedrops Canada Inc. All rights reserved.<br>
+              Need help? Contact us at <a href="mailto:support@safedrops.com" style="color: #28a745;">support@safedrops.com</a>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(
+        `[🔐 Password Reset Confirmation] ✅ Confirmation sent to: ${email}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `[🔐 Password Reset Confirmation] ❌ Failed to send confirmation to ${email}:`,
         error,
       );
     }

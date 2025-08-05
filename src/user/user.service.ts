@@ -176,7 +176,7 @@ export class UserService implements OnModuleInit {
       role_name: role.role_name,
       user_id: user.user_id,
       created_at: user.created_at,
-      password: password, // Plain password for user notification
+      password: password,
       display_user_id: `${role.role_name}-${user.user_id}`,
     };
 

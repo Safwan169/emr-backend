@@ -724,6 +724,250 @@ export class AuthService {
     return `${years} year${years !== 1 ? 's' : ''} ${months} month${months !== 1 ? 's' : ''}`;
   }
 
+  // ===============================
+  // FORGOT PASSWORD FLOW
+  // ===============================
+
+  // For forgot password OTP: store OTP + email keyed by email
+  private pendingPasswordResets = new Map<
+    string,
+    { otpCode: string; expiresAt: Date; verified: boolean }
+  >();
+
+  // For password reset tokens: store email keyed by token
+  private passwordResetTokens = new Map<
+    string,
+    { email: string; expiresAt: Date }
+  >();
+
+  // Step 1: Send OTP for forgot password
+  async sendForgotPasswordOtp(email: string) {
+    this.logger.log(`🔑 [Forgot Password] OTP request for: ${email}`);
+
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      this.logger.warn(`❌ [Forgot Password] User not found: ${email}`);
+      // Don't reveal if email exists or not for security
+      return {
+        message:
+          'If this email is registered, you will receive an OTP to reset your password.',
+        email_hint: this.maskEmail(email),
+      };
+    }
+
+    // Check rate limiting
+    const existingEntry = this.pendingPasswordResets.get(email);
+    if (existingEntry && existingEntry.expiresAt > new Date()) {
+      const timeSinceLastOtp =
+        Date.now() - (existingEntry.expiresAt.getTime() - 2 * 60 * 1000);
+      const cooldownPeriod = 30 * 1000; // 30 seconds
+
+      if (timeSinceLastOtp < cooldownPeriod) {
+        const remainingTime = Math.ceil(
+          (cooldownPeriod - timeSinceLastOtp) / 1000,
+        );
+        this.logger.warn(`⏳ [Forgot Password] Rate limited for: ${email}`);
+        throw new HttpException(
+          `Please wait ${remainingTime} seconds before requesting a new OTP.`,
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+    }
+
+    const otpCode = this.generateOTP();
+    const expiresAt = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes
+
+    this.pendingPasswordResets.set(email, {
+      otpCode,
+      expiresAt,
+      verified: false,
+    });
+
+    await this.emailService.sendForgotPasswordOtpEmail(email, otpCode);
+
+    this.logger.log(`✅ [Forgot Password] OTP sent to: ${email}`);
+
+    return {
+      message: 'OTP sent to your email. Please verify to reset your password.',
+      email_hint: this.maskEmail(email),
+    };
+  }
+
+  // Step 2: Verify OTP for forgot password
+  async verifyForgotPasswordOtp(email: string, otp: string) {
+    this.logger.log(`🔍 [Forgot Password] OTP verification for: ${email}`);
+
+    const resetEntry = this.pendingPasswordResets.get(email);
+    if (!resetEntry) {
+      this.logger.warn(`❌ [Forgot Password] No pending reset found: ${email}`);
+      throw new BadRequestException(
+        'No pending password reset found for this email.',
+      );
+    }
+
+    if (resetEntry.expiresAt < new Date()) {
+      this.pendingPasswordResets.delete(email);
+      this.logger.warn(`⌛ [Forgot Password] OTP expired for: ${email}`);
+      throw new BadRequestException('OTP expired. Please request a new one.');
+    }
+
+    if (resetEntry.otpCode !== otp) {
+      this.logger.warn(`🚫 [Forgot Password] Invalid OTP for: ${email}`);
+      throw new BadRequestException('Invalid OTP.');
+    }
+
+    // Mark as verified
+    resetEntry.verified = true;
+    this.pendingPasswordResets.set(email, resetEntry);
+
+    // Generate reset token
+    const resetToken = this.generateResetToken();
+    const tokenExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    this.passwordResetTokens.set(resetToken, {
+      email,
+      expiresAt: tokenExpiresAt,
+    });
+
+    this.logger.log(
+      `✅ [Forgot Password] OTP verified, token generated for: ${email}`,
+    );
+
+    return {
+      message: 'OTP verified successfully. You can now reset your password.',
+      reset_token: resetToken,
+      expires_in: '10 minutes',
+    };
+  }
+
+  // Step 3: Reset password with token
+  async resetPassword(resetToken: string, newPassword: string) {
+    this.logger.log(`🔄 [Reset Password] Attempting password reset`);
+
+    const tokenEntry = this.passwordResetTokens.get(resetToken);
+    if (!tokenEntry) {
+      this.logger.warn(`❌ [Reset Password] Invalid token provided`);
+      throw new BadRequestException('Invalid or expired reset token.');
+    }
+
+    if (tokenEntry.expiresAt < new Date()) {
+      this.passwordResetTokens.delete(resetToken);
+      this.logger.warn(
+        `⌛ [Reset Password] Token expired for: ${tokenEntry.email}`,
+      );
+      throw new BadRequestException(
+        'Reset token expired. Please start the process again.',
+      );
+    }
+
+    // Validate password strength (optional)
+    if (newPassword.length < 6) {
+      throw new BadRequestException(
+        'Password must be at least 6 characters and no longer than 10 characters.',
+      );
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: tokenEntry.email },
+    });
+
+    if (!user) {
+      this.logger.warn(
+        `❌ [Reset Password] User not found: ${tokenEntry.email}`,
+      );
+      throw new BadRequestException('User not found.');
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password in database
+    await this.prisma.user.update({
+      where: { email: tokenEntry.email },
+      data: { password_hashed: hashedPassword },
+    });
+
+    // Clean up
+    this.passwordResetTokens.delete(resetToken);
+    this.pendingPasswordResets.delete(tokenEntry.email);
+
+    // Send confirmation email
+    this.emailService.sendPasswordResetConfirmationEmail(
+      tokenEntry.email,
+      user.first_name,
+    );
+
+    this.logger.log(
+      `✅ [Reset Password] Password successfully reset for: ${tokenEntry.email}`,
+    );
+
+    return {
+      message:
+        'Password reset successfully. You can now login with your new password.',
+    };
+  }
+
+  // Resend OTP for forgot password
+  async resendForgotPasswordOtp(email: string) {
+    this.logger.log(`🔄 [Resend Forgot Password] Request for: ${email}`);
+
+    const existingEntry = this.pendingPasswordResets.get(email);
+    if (!existingEntry) {
+      this.logger.warn(
+        `❌ [Resend Forgot Password] No pending reset: ${email}`,
+      );
+      throw new BadRequestException(
+        'No pending password reset found for this email. Please start the forgot password process again.',
+      );
+    }
+
+    // Check cooldown
+    const timeSinceLastOtp =
+      Date.now() - (existingEntry.expiresAt.getTime() - 2 * 60 * 1000);
+    const cooldownPeriod = 30 * 1000; // 30 seconds
+
+    if (timeSinceLastOtp < cooldownPeriod) {
+      const remainingTime = Math.ceil(
+        (cooldownPeriod - timeSinceLastOtp) / 1000,
+      );
+      this.logger.warn(`⏳ [Resend Forgot Password] Rate limited: ${email}`);
+      throw new HttpException(
+        `Please wait ${remainingTime} seconds before requesting a new OTP.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    // Generate new OTP
+    const newOtpCode = this.generateOTP();
+    const newExpiresAt = new Date(Date.now() + 2 * 60 * 1000);
+
+    this.pendingPasswordResets.set(email, {
+      otpCode: newOtpCode,
+      expiresAt: newExpiresAt,
+      verified: false,
+    });
+
+    await this.emailService.sendForgotPasswordOtpEmail(email, newOtpCode);
+
+    this.logger.log(`✅ [Resend Forgot Password] New OTP sent to: ${email}`);
+
+    return {
+      message:
+        'New OTP sent to your email. Please verify to reset your password.',
+      email_hint: this.maskEmail(email),
+    };
+  }
+
+  // Helper method to generate reset token
+  private generateResetToken(): string {
+    const crypto = require('crypto');
+    return crypto.randomBytes(32).toString('hex');
+  }
+
   private formatUser(user: any) {
     return {
       id: user.id,

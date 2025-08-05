@@ -158,4 +158,45 @@ export class AuthController {
     res.clearCookie('access_token');
     return { message: 'Logged out successfully' };
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🚨 FORGOT PASSWORD FLOW
+  // ═══════════════════════════════════════════════════════════════════════════
+  //! Step 1: Send OTP for password reset
+  @Post('ForgotPassword')
+  @HttpCode(HttpStatus.OK)
+  async sendForgotPasswordOtp(@Body() body: { email: string }) {
+    this.logger.log(`🔑 Sending forgot password OTP for email: ${body.email}`);
+    return this.authService.sendForgotPasswordOtp(body.email);
+  }
+
+  //! Step 2: Verify OTP for password reset
+  @Post('ForgotPassword/VerifyOTP')
+  @HttpCode(HttpStatus.OK)
+  async verifyForgotPasswordOtp(@Body() body: { email: string; otp: string }) {
+    this.logger.log(
+      `🔍 Verifying forgot password OTP for email: ${body.email}`,
+    );
+    return this.authService.verifyForgotPasswordOtp(body.email, body.otp);
+  }
+
+  //! Step 3: Reset password with token
+  @Post('ResetPassword')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(
+    @Body() body: { reset_token: string; new_password: string },
+  ) {
+    this.logger.log(`🔄 Resetting password with token`);
+    return this.authService.resetPassword(body.reset_token, body.new_password);
+  }
+
+  //! Resend OTP for forgot password
+  @Post('ForgotPassword/ResendOTP')
+  @HttpCode(HttpStatus.OK)
+  async resendForgotPasswordOtp(@Body() body: { email: string }) {
+    this.logger.log(
+      `🔄 Resending forgot password OTP for email: ${body.email}`,
+    );
+    return this.authService.resendForgotPasswordOtp(body.email);
+  }
 }
