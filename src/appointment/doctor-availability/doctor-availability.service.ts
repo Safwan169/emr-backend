@@ -6,8 +6,6 @@ import { WeekDayEnum, AppointmentSlot } from '@prisma/client';
 import { endOfDay, differenceInYears } from 'date-fns';
 import { AppointmentStatus } from '@prisma/client';
 
-
-
 type Slot = {
   date: string;
   start_time: string;
@@ -487,7 +485,144 @@ export class DoctorAvailabilityService {
     return slots;
   }
 
-  // UPDATED METHOD: Enhanced getAvailability with slot IDs
+  // NEW METHOD: Get all slots for a doctor with appointment statuses
+  async getSpecificDoctorAllSlots(doctor_id: number) {
+    const availability = await this.prisma.doctorAvailability.findFirst({
+      where: { user_id: doctor_id },
+      include: {
+        available_days: true,
+        user: {
+          select: {
+            first_name: true,
+            last_name: true,
+            DoctorProfile: {
+              select: {
+                specialization: true,
+                hospital: true,
+                fee: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!availability) {
+      return {
+        success: false,
+        availability: null,
+        slots: [],
+        message: 'Doctor has not set availability yet',
+      };
+    }
+
+    // Get all slots for this doctor (future dates only)
+    const allSlots = await this.prisma.appointmentSlot.findMany({
+      where: {
+        user_id: doctor_id,
+        slot_date: {
+          gte: startOfDay(new Date()),
+        },
+      },
+      include: {
+        appointment: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                first_name: true,
+                last_name: true,
+                email: true,
+                phone_number: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ slot_date: 'asc' }, { start_time: 'asc' }],
+    });
+
+    // Group slots by date with status information
+    const slotsByDate = allSlots.reduce((acc, slot) => {
+      const date = format(new Date(slot.slot_date), 'yyyy-MM-dd');
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+
+      const slotData = {
+        slot_id: slot.id,
+        start_time: slot.start_time,
+        end_time: slot.end_time,
+        day: format(new Date(slot.slot_date), 'EEEE'),
+        is_booked: slot.is_booked,
+        status:
+          slot.is_booked && slot.appointment ? slot.appointment.status : null, // null when not booked, status when booked
+        appointment: slot.appointment
+          ? {
+              id: slot.appointment.id,
+              notes: slot.appointment.notes,
+              patient: {
+                id: slot.appointment.user.id,
+                name: `${slot.appointment.user.first_name} ${slot.appointment.user.last_name}`,
+                email: slot.appointment.user.email,
+                phone_number: slot.appointment.user.phone_number,
+              },
+              created_at: slot.appointment.created_at,
+              updated_at: slot.appointment.updated_at,
+            }
+          : null,
+      };
+
+      acc[date].push(slotData);
+      return acc;
+    }, {});
+
+    // Calculate summary statistics
+    const totalSlots = allSlots.length;
+    const bookedSlots = allSlots.filter((slot) => slot.is_booked);
+    const availableSlots = allSlots.filter((slot) => !slot.is_booked);
+
+    const confirmedCount = bookedSlots.filter(
+      (slot) => slot.appointment?.status === 'confirmed',
+    ).length;
+    const cancelledCount = bookedSlots.filter(
+      (slot) => slot.appointment?.status === 'cancelled',
+    ).length;
+    const completedCount = bookedSlots.filter(
+      (slot) => slot.appointment?.status === 'completed',
+    ).length;
+
+    return {
+      success: true,
+      doctor: {
+        id: doctor_id,
+        name: `${availability.user.first_name} ${availability.user.last_name}`,
+        specialization: availability.user.DoctorProfile?.specialization,
+        hospital: availability.user.DoctorProfile?.hospital,
+        fee: availability.user.DoctorProfile?.fee,
+      },
+      availability: {
+        working_hours: {
+          start_time: availability.start_time,
+          end_time: availability.end_time,
+          slot_duration: availability.appointment_duration_mins,
+        },
+        available_days: availability.available_days.map(
+          (day) => day.day_of_week,
+        ),
+      },
+      slots: slotsByDate,
+      summary: {
+        total_slots: totalSlots,
+        available_slots: availableSlots.length,
+        booked_slots: bookedSlots.length,
+        confirmed_appointments: confirmedCount,
+        cancelled_appointments: cancelledCount,
+        completed_appointments: completedCount,
+      },
+    };
+  }
+
   async getAvailability(doctor_id: number) {
     const availability = await this.prisma.doctorAvailability.findFirst({
       where: { user_id: doctor_id },
@@ -514,24 +649,43 @@ export class DoctorAvailabilityService {
         success: false,
         availability: null,
         available_slots: [],
+        booked_slots: [],
         message: 'Doctor has not set availability yet',
       };
     }
 
-    // Get available slots (unbooked, future slots only)
-    const slots = await this.prisma.appointmentSlot.findMany({
+    // Get all slots (both available and booked) for future dates
+    const allSlots = await this.prisma.appointmentSlot.findMany({
       where: {
         user_id: doctor_id,
-        is_booked: false,
         slot_date: {
           gte: startOfDay(new Date()),
+        },
+      },
+      include: {
+        appointment: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                first_name: true,
+                last_name: true,
+                email: true,
+                phone_number: true,
+              },
+            },
+          },
         },
       },
       orderBy: [{ slot_date: 'asc' }, { start_time: 'asc' }],
     });
 
-    // Group slots by date for better organization
-    const slotsByDate = slots.reduce((acc, slot) => {
+    // Separate available and booked slots
+    const availableSlots = allSlots.filter((slot) => !slot.is_booked);
+    const bookedSlots = allSlots.filter((slot) => slot.is_booked);
+
+    // Group available slots by date
+    const availableSlotsByDate = availableSlots.reduce((acc, slot) => {
       const date = format(new Date(slot.slot_date), 'yyyy-MM-dd');
       if (!acc[date]) {
         acc[date] = [];
@@ -541,9 +695,65 @@ export class DoctorAvailabilityService {
         start_time: slot.start_time,
         end_time: slot.end_time,
         day: format(new Date(slot.slot_date), 'EEEE'),
+        status: 'available',
       });
       return acc;
     }, {});
+
+    // Group booked slots by date with appointment details
+    const bookedSlotsByDate = bookedSlots.reduce((acc, slot) => {
+      const date = format(new Date(slot.slot_date), 'yyyy-MM-dd');
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push({
+        slot_id: slot.id,
+        start_time: slot.start_time,
+        end_time: slot.end_time,
+        day: format(new Date(slot.slot_date), 'EEEE'),
+        status: slot.appointment?.status || 'booked',
+        appointment: slot.appointment
+          ? {
+              id: slot.appointment.id,
+              notes: slot.appointment.notes,
+              patient: {
+                id: slot.appointment.user.id,
+                name: `${slot.appointment.user.first_name} ${slot.appointment.user.last_name}`,
+                email: slot.appointment.user.email,
+                phone_number: slot.appointment.user.phone_number,
+              },
+              created_at: slot.appointment.created_at,
+            }
+          : null,
+      });
+      return acc;
+    }, {});
+
+    // Combine all slots by date for a comprehensive view
+    const allSlotsByDate = {};
+
+    // Add available slots
+    Object.keys(availableSlotsByDate).forEach((date) => {
+      if (!allSlotsByDate[date]) {
+        allSlotsByDate[date] = [];
+      }
+      allSlotsByDate[date].push(...availableSlotsByDate[date]);
+    });
+
+    // Add booked slots
+    Object.keys(bookedSlotsByDate).forEach((date) => {
+      if (!allSlotsByDate[date]) {
+        allSlotsByDate[date] = [];
+      }
+      allSlotsByDate[date].push(...bookedSlotsByDate[date]);
+    });
+
+    // Sort slots within each date by start time
+    Object.keys(allSlotsByDate).forEach((date) => {
+      allSlotsByDate[date].sort((a, b) =>
+        a.start_time.localeCompare(b.start_time),
+      );
+    });
 
     return {
       success: true,
@@ -564,8 +774,26 @@ export class DoctorAvailabilityService {
           (day) => day.day_of_week,
         ),
       },
-      available_slots: slotsByDate,
-      total_slots: slots.length,
+      // All slots grouped by date with their statuses
+      all_slots: allSlotsByDate,
+      // Separate arrays for backward compatibility
+      available_slots: availableSlotsByDate,
+      booked_slots: bookedSlotsByDate,
+      // Summary counts
+      summary: {
+        total_slots: allSlots.length,
+        available_count: availableSlots.length,
+        booked_count: bookedSlots.length,
+        confirmed_count: bookedSlots.filter(
+          (s) => s.appointment?.status === 'confirmed',
+        ).length,
+        cancelled_count: bookedSlots.filter(
+          (s) => s.appointment?.status === 'cancelled',
+        ).length,
+        completed_count: bookedSlots.filter(
+          (s) => s.appointment?.status === 'completed',
+        ).length,
+      },
     };
   }
 
@@ -744,168 +972,168 @@ export class DoctorAvailabilityService {
     return formattedAppointments;
   }
 
-  async getDoctorPatientCount(doctorId: number): Promise<{ patientCount: number }> {
-  const distinctPatients = await this.prisma.appointment.findMany({
-    where: {
-      slot: {
-        user_id: doctorId, // slot.user_id is the doctor
+  async getDoctorPatientCount(
+    doctorId: number,
+  ): Promise<{ patientCount: number }> {
+    const distinctPatients = await this.prisma.appointment.findMany({
+      where: {
+        slot: {
+          user_id: doctorId, // slot.user_id is the doctor
+        },
       },
-    },
-    select: {
-      user_id: true, // user_id is the patient
-    },
-    distinct: ['user_id'], // unique patients only
-  });
-
-  return { patientCount: distinctPatients.length };
-}
-
-
-
-async getAllPatientsByDoctor(doctorId: number): Promise<any[]> {
-  const appointments = await this.prisma.appointment.findMany({
-    where: {
-      slot: {
-        user_id: doctorId,
+      select: {
+        user_id: true, // user_id is the patient
       },
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          first_name: true,
-          last_name: true,
-          gender: true,
-          date_of_birth: true,
-          ChronicConditionHistory: {
-            select: {
-              name: true, // ✅ Corrected field from your model
+      distinct: ['user_id'], // unique patients only
+    });
+
+    return { patientCount: distinctPatients.length };
+  }
+
+  async getAllPatientsByDoctor(doctorId: number): Promise<any[]> {
+    const appointments = await this.prisma.appointment.findMany({
+      where: {
+        slot: {
+          user_id: doctorId,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            gender: true,
+            date_of_birth: true,
+            ChronicConditionHistory: {
+              select: {
+                name: true, // ✅ Corrected field from your model
+              },
+              take: 1, // Only the first condition (you can increase or loop if needed)
             },
-            take: 1, // Only the first condition (you can increase or loop if needed)
           },
         },
       },
-    },
-    orderBy: {
-      created_at: 'desc',
-    },
-  });
+      orderBy: {
+        created_at: 'desc',
+      },
+    });
 
-  const uniquePatientsMap = new Map<number, any>();
+    const uniquePatientsMap = new Map<number, any>();
 
-  for (const appointment of appointments) {
-    const user = appointment.user;
-    if (!user) continue;
+    for (const appointment of appointments) {
+      const user = appointment.user;
+      if (!user) continue;
 
-    const patientId = user.id;
-    if (!uniquePatientsMap.has(patientId)) {
+      const patientId = user.id;
+      if (!uniquePatientsMap.has(patientId)) {
+        const fullName = `${user.first_name} ${user.last_name}`;
+        const age = differenceInYears(new Date(), new Date(user.date_of_birth));
+
+        uniquePatientsMap.set(patientId, {
+          user_id: patientId,
+          name: fullName,
+          gender: user.gender,
+          age,
+          appointment_date: appointment.created_at,
+          condition: user.ChronicConditionHistory[0]?.name || 'N/A',
+          status: appointment.status,
+        });
+      }
+    }
+
+    return Array.from(uniquePatientsMap.values());
+  }
+
+  async getTodaysAppointmentsByDoctor(
+    doctorId: number,
+  ): Promise<{ total: number; appointments: any[] }> {
+    const todayStart = startOfDay(new Date());
+    const todayEnd = endOfDay(new Date());
+
+    // Fetch appointments with user details
+    const appointments = await this.prisma.appointment.findMany({
+      where: {
+        created_at: {
+          gte: todayStart,
+          lte: todayEnd,
+        },
+        slot: {
+          user_id: doctorId,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            gender: true,
+            date_of_birth: true,
+            ChronicConditionHistory: {
+              select: {
+                name: true,
+              },
+              take: 1,
+            },
+          },
+        },
+      },
+      orderBy: {
+        created_at: 'asc',
+      },
+    });
+
+    // Count total number of today's appointments for the doctor
+    const total = await this.prisma.appointment.count({
+      where: {
+        created_at: {
+          gte: todayStart,
+          lte: todayEnd,
+        },
+        slot: {
+          user_id: doctorId,
+        },
+      },
+    });
+
+    // Format appointment info
+    const formattedAppointments = appointments.map((appointment) => {
+      const user = appointment.user;
       const fullName = `${user.first_name} ${user.last_name}`;
       const age = differenceInYears(new Date(), new Date(user.date_of_birth));
-
-      uniquePatientsMap.set(patientId, {
-        user_id: patientId,
+      return {
+        user_id: user.id,
         name: fullName,
         gender: user.gender,
         age,
-        appointment_date: appointment.created_at,
+        appointment_time: appointment.created_at,
         condition: user.ChronicConditionHistory[0]?.name || 'N/A',
         status: appointment.status,
-      });
-    }
-  }
+      };
+    });
 
-  return Array.from(uniquePatientsMap.values());
-}
-
-
-async getTodaysAppointmentsByDoctor(doctorId: number): Promise<{ total: number; appointments: any[] }> {
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-
-  // Fetch appointments with user details
-  const appointments = await this.prisma.appointment.findMany({
-    where: {
-      created_at: {
-        gte: todayStart,
-        lte: todayEnd,
-      },
-      slot: {
-        user_id: doctorId,
-      },
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          first_name: true,
-          last_name: true,
-          gender: true,
-          date_of_birth: true,
-          ChronicConditionHistory: {
-            select: {
-              name: true,
-            },
-            take: 1,
-          },
-        },
-      },
-    },
-    orderBy: {
-      created_at: 'asc',
-    },
-  });
-
-  // Count total number of today's appointments for the doctor
-  const total = await this.prisma.appointment.count({
-    where: {
-      created_at: {
-        gte: todayStart,
-        lte: todayEnd,
-      },
-      slot: {
-        user_id: doctorId,
-      },
-    },
-  });
-
-  // Format appointment info
-  const formattedAppointments = appointments.map((appointment) => {
-    const user = appointment.user;
-    const fullName = `${user.first_name} ${user.last_name}`;
-    const age = differenceInYears(new Date(), new Date(user.date_of_birth));
     return {
-      user_id: user.id,
-      name: fullName,
-      gender: user.gender,
-      age,
-      appointment_time: appointment.created_at,
-      condition: user.ChronicConditionHistory[0]?.name || 'N/A',
-      status: appointment.status,
+      total,
+      appointments: formattedAppointments,
     };
-  });
-
-  return {
-    total,
-    appointments: formattedAppointments,
-  };
-}
-
-
-
-async updateAppointmentStatus(appointmentId: number, newStatus: AppointmentStatus) {
-  // Optional: verify appointment exists first (optional)
-  const appointment = await this.prisma.appointment.findUnique({ where: { id: appointmentId } });
-  if (!appointment) {
-    throw new Error('Appointment not found');
   }
 
-  return this.prisma.appointment.update({
-    where: { id: appointmentId },
-    data: { status: newStatus },
-  });
-}
+  async updateAppointmentStatus(
+    appointmentId: number,
+    newStatus: AppointmentStatus,
+  ) {
+    // Optional: verify appointment exists first (optional)
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+    });
+    if (!appointment) {
+      throw new Error('Appointment not found');
+    }
 
-
-
-
+    return this.prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status: newStatus },
+    });
+  }
 }

@@ -77,4 +77,9 @@ export class AppointmentController {
   ) {
     return this.doctorAvailabilityService.updateAppointmentStatus(Id, Status);
   }
+
+  @Get('Doctor/:DoctorId/AllSlots')
+  async getDoctorAllSlots(@Param('DoctorId', ParseIntPipe) DoctorId: number) {
+    return this.doctorAvailabilityService.getSpecificDoctorAllSlots(DoctorId);
+  }
 }
