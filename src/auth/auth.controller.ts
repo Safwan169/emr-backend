@@ -111,6 +111,14 @@ export class AuthController {
     return this.authService.verifyOtpAndRegister(body.email, body.otp);
   }
 
+  //! Resend OTP for registration
+  @Post('Register/ResendOTP')
+  @HttpCode(HttpStatus.OK)
+  async resendRegistrationOtp(@Body() body: { email: string }) {
+    this.logger.log(`🔄 Resending registration OTP for email: ${body.email}`);
+    return this.authService.resendRegistrationOtp(body.email);
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // 🚨 USER LOGIN, NO OTP
   // ═══════════════════════════════════════════════════════════════════════════
