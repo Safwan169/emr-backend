@@ -471,7 +471,9 @@ export class AuthService {
 
     const existingOtpEntry = this.pendingRegistrations.get(email);
     if (existingOtpEntry && existingOtpEntry.expiresAt > new Date()) {
-      this.logger.warn(`⏳ [OTP Cool down] Waiting period active for: ${email}`);
+      this.logger.warn(
+        `⏳ [OTP Cool down] Waiting period active for: ${email}`,
+      );
       throw new HttpException(
         'Please wait before requesting a new OTP.',
         HttpStatus.TOO_MANY_REQUESTS,
@@ -494,6 +496,63 @@ export class AuthService {
     return {
       message:
         'OTP sent to your email. Please verify to complete registration.',
+      email_hint: this.maskEmail(email),
+    };
+  }
+
+  async resendRegistrationOtp(email: string) {
+    this.logger.log(`🔄 [Resend Registration OTP] Request for: ${email}`);
+
+    // Check if there's a pending registration for this email
+    const existingOtpEntry = this.pendingRegistrations.get(email);
+    if (!existingOtpEntry) {
+      this.logger.warn(
+        `❌ [Resend Failed] No pending registration found: ${email}`,
+      );
+      throw new BadRequestException(
+        'No pending registration found for this email. Please start the registration process again.',
+      );
+    }
+
+    // Check if the last OTP was sent too recently (prevent spam)
+    const timeSinceLastOtp =
+      Date.now() - (existingOtpEntry.expiresAt.getTime() - 2 * 60 * 1000);
+    const cooldownPeriod = 30 * 1000; // 30 seconds cool down
+
+    if (timeSinceLastOtp < cooldownPeriod) {
+      const remainingTime = Math.ceil(
+        (cooldownPeriod - timeSinceLastOtp) / 1000,
+      );
+      this.logger.warn(
+        `⏳ [Resend Throttled] ${remainingTime}s remaining for: ${email}`,
+      );
+      throw new HttpException(
+        `Please wait ${remainingTime} seconds before requesting a new OTP.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    // Generate new OTP and update the existing entry
+    const newOtpCode = this.generateOTP();
+    const newExpiresAt = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes
+
+    // Update the existing entry with new OTP (this effectively deletes the old one)
+    this.pendingRegistrations.set(email, {
+      otpCode: newOtpCode,
+      expiresAt: newExpiresAt,
+      registrationData: existingOtpEntry.registrationData,
+    });
+
+    // Send the new OTP via email
+    await this.emailService.sendOtpEmail(email, newOtpCode);
+
+    this.logger.log(
+      `✅ [Resend Success] New registration OTP sent to: ${email}`,
+    );
+
+    return {
+      message:
+        'New OTP sent to your email. Please verify to complete registration.',
       email_hint: this.maskEmail(email),
     };
   }
