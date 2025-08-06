@@ -164,6 +164,7 @@ export class DoctorProfileService {
       years_of_experience: dto.years_of_experience,
       phone: dto.phone,
       hospital: dto.hospital,
+      room_no: dto.room_no,
       user: { connect: { id: userId } },
     };
 

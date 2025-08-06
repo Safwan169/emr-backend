@@ -107,6 +107,7 @@ model DoctorProfile {
   years_of_experience Float?
   phone               String?
   hospital            String?
+  room_no             String?
 
   test_voice_file_id Int?
   test_voice_file    File? @relation("DoctorProfileTestVoiceFile", fields: [test_voice_file_id], references: [id], onDelete: SetNull)
@@ -447,6 +448,22 @@ enum AppointmentStatus {
   confirmed
   cancelled
   completed
+}
+
+enum AppointmentType {
+  follow_up // Revisit after a previous consultation
+  check_up // Routine health check
+  consultation // General consultation
+  emergency // Urgent care
+  surgery // Surgical procedure
+  vaccination // Immunization appointment
+  lab_test // Blood tests, urine tests, etc.
+  therapy // Physical or mental therapy session
+  screening // Preventive screenings (e.g., mammogram)
+  diagnosis // For identifying a condition
+  prescription_renewal // For renewing ongoing medications
+  prenatal // Pregnancy-related appointments
+  postnatal // After childbirth
 }
 
 model Appointment {
