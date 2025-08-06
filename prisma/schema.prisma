@@ -66,6 +66,8 @@ model User {
   DoctorAvailability      DoctorAvailability[]
   AppointmentSlot         AppointmentSlot[]
   Appointment             Appointment[]
+  doctor_conversations    Conversation[]            @relation("DoctorConversations")
+  patient_conversations   Conversation[]            @relation("PatientConversations")
 
   @@unique([role_id, user_id])
 }
@@ -188,6 +190,8 @@ model File {
 
   doctorProfileVoices DoctorProfile[] @relation("DoctorProfileTestVoiceFile")
   User                User[]
+  conversation_audio  Conversation[]  @relation("ConversationAudioFile")
+  Conversation        Conversation[]
 }
 
 model Otp {
@@ -461,7 +465,33 @@ model Appointment {
   slot AppointmentSlot @relation(fields: [slot_id], references: [id], onDelete: Cascade)
   user User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  status     AppointmentStatus @default(confirmed)
-  created_at DateTime          @default(now())
-  updated_at DateTime          @updatedAt
+  status       AppointmentStatus @default(confirmed)
+  created_at   DateTime          @default(now())
+  updated_at   DateTime          @updatedAt
+  Conversation Conversation[]
+}
+
+model Conversation {
+  id Int @id @default(autoincrement())
+
+  doctor_id  Int
+  patient_id Int
+  doctor     User @relation("DoctorConversations", fields: [doctor_id], references: [id], onDelete: Cascade)
+  patient    User @relation("PatientConversations", fields: [patient_id], references: [id], onDelete: Cascade)
+
+  file_id Int
+  file    File @relation("ConversationAudioFile", fields: [file_id], references: [id], onDelete: Cascade)
+
+  appointment_id Int
+  appointment    Appointment @relation(fields: [appointment_id], references: [id], onDelete: Cascade)
+
+  duration_mins     Int?
+  
+  conversation_date DateTime
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  File   File? @relation(fields: [fileId], references: [id])
+  fileId Int?
 }
