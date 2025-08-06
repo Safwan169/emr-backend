@@ -107,6 +107,7 @@ model DoctorProfile {
   years_of_experience Float?
   phone               String?
   hospital            String?
+  room_no             String?
 
   test_voice_file_id Int?
   test_voice_file    File? @relation("DoctorProfileTestVoiceFile", fields: [test_voice_file_id], references: [id], onDelete: SetNull)

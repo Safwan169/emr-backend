@@ -35,6 +35,10 @@ export class CreateDoctorProfileDto {
   hospital?: string;
 
   @IsOptional()
+  @IsString()
+  room_no?: string;
+
+  @IsOptional()
   @IsInt()
   image_file_id?: number;
 }
