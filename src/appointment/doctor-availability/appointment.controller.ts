@@ -6,6 +6,7 @@ import {
   ParseIntPipe,
   Get,
   Put,
+  Query,
 } from '@nestjs/common';
 import { DoctorAvailabilityService } from './doctor-availability.service';
 import { BookAppointmentDto } from './dto/book-appointment.dto';
@@ -27,6 +28,7 @@ export class AppointmentController {
       slot_id: dto.slot_id,
       doctor_id: dto.doctor_id,
       notes: dto.notes,
+      type: dto.type, // <-- Pass type
     });
   }
 
@@ -70,12 +72,12 @@ export class AppointmentController {
     );
   }
 
-  @Put(':Id/Status')
+  @Put(':id/status')
   async updateStatus(
-    @Param('Id', ParseIntPipe) Id: number,
-    @Body('Status') Status: AppointmentStatus,
+    @Param('id', ParseIntPipe) id: number,
+    @Body('status') status: AppointmentStatus,
   ) {
-    return this.doctorAvailabilityService.updateAppointmentStatus(Id, Status);
+    return this.doctorAvailabilityService.updateAppointmentStatus(id, status);
   }
 
   @Get('Doctor/:DoctorId/AllSlots')
@@ -97,5 +99,31 @@ export class AppointmentController {
     return this.doctorAvailabilityService.getDailyAppointmentCountsLast7Days(
       doctorId,
     );
+  }
+
+  @Get('DoctorProfiles/Specializations')
+  async getSpecializations() {
+    const specializations =
+      await this.doctorAvailabilityService.getUniqueSpecializations();
+    return {
+      success: true,
+      data: specializations,
+    };
+  }
+
+  @Get('Doctors/Search')
+  async searchDoctors(
+    @Query('name') name?: string,
+    @Query('specialization') specialization?: string,
+  ) {
+    const doctors = await this.doctorAvailabilityService.searchDoctors({
+      name,
+      specialization,
+    });
+
+    return {
+      success: true,
+      data: doctors,
+    };
   }
 }
