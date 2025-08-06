@@ -1001,7 +1001,7 @@ export class DoctorAvailabilityService {
     const appointments = await this.prisma.appointment.findMany({
       where: {
         slot: {
-          user_id: doctorId,
+          user_id: doctorId, // Doctor's user ID
         },
       },
       include: {
@@ -1012,12 +1012,20 @@ export class DoctorAvailabilityService {
             last_name: true,
             gender: true,
             date_of_birth: true,
+            phone_number: true,
             ChronicConditionHistory: {
               select: {
-                name: true, // ✅ Corrected field from your model
+                name: true,
               },
-              take: 1, // Only the first condition (you can increase or loop if needed)
+              take: 1,
             },
+          },
+        },
+        slot: {
+          select: {
+            start_time: true,
+            end_time: true,
+            slot_date: true,
           },
         },
       },
@@ -1030,9 +1038,12 @@ export class DoctorAvailabilityService {
 
     for (const appointment of appointments) {
       const user = appointment.user;
+      const slot = appointment.slot;
+
       if (!user) continue;
 
       const patientId = user.id;
+
       if (!uniquePatientsMap.has(patientId)) {
         const fullName = `${user.first_name} ${user.last_name}`;
         const age = differenceInYears(new Date(), new Date(user.date_of_birth));
@@ -1042,9 +1053,13 @@ export class DoctorAvailabilityService {
           name: fullName,
           gender: user.gender,
           age,
-          appointment_date: appointment.created_at,
+          contact_number: user.phone_number || 'N/A',
           condition: user.ChronicConditionHistory[0]?.name || 'N/A',
+          appointment_date: appointment.created_at,
           status: appointment.status,
+          reason: appointment.notes || 'N/A',
+          type: appointment.type || 'N/A',
+          slot_time: slot ? slot.start_time : 'N/A',
         });
       }
     }
