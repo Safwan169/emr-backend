@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateDoctorAvailabilityDto } from './dto/create-availability.dto';
 import { addMinutes, format, startOfDay } from 'date-fns';
@@ -22,8 +26,9 @@ export class DoctorAvailabilityService {
     slot_id: number;
     doctor_id: number;
     notes?: string;
+    type: string;
   }) {
-    const { patient_id, slot_id, doctor_id, notes } = dto;
+    const { patient_id, slot_id, doctor_id, notes, type } = dto;
 
     // Validate patient exists and has correct role
     const patient = await this.prisma.user.findFirst({
@@ -129,6 +134,7 @@ export class DoctorAvailabilityService {
           slot_id,
           user_id: patient_id,
           notes: notes || null,
+          type,
         },
         include: {
           slot: {
@@ -180,6 +186,7 @@ export class DoctorAvailabilityService {
       appointment_details: {
         date: format(new Date(result.slot.slot_date), 'yyyy-MM-dd'),
         day: format(new Date(result.slot.slot_date), 'EEEE'),
+        type: result.type,
         start_time: result.slot.start_time,
         end_time: result.slot.end_time,
       },
@@ -1123,14 +1130,21 @@ export class DoctorAvailabilityService {
     appointmentId: number,
     newStatus: AppointmentStatus,
   ) {
-    // Optional: verify appointment exists first (optional)
-    const appointment = await this.prisma.appointment.findUnique({
-      where: { id: appointmentId },
-    });
-    if (!appointment) {
-      throw new Error('Appointment not found');
+    // Validate status
+    if (!Object.values(AppointmentStatus).includes(newStatus)) {
+      throw new BadRequestException('Invalid status');
     }
 
+    // Check if appointment exists
+    const existingAppointment = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+    });
+
+    if (!existingAppointment) {
+      throw new NotFoundException('Appointment not found');
+    }
+
+    // Update status
     return this.prisma.appointment.update({
       where: { id: appointmentId },
       data: { status: newStatus },
@@ -1235,5 +1249,72 @@ export class DoctorAvailabilityService {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     return result;
+  }
+
+  async getUniqueSpecializations(): Promise<string[]> {
+    const profiles = await this.prisma.doctorProfile.findMany({
+      distinct: ['specialization'],
+      select: {
+        specialization: true,
+      },
+      where: {
+        specialization: {
+          not: null,
+        },
+      },
+    });
+
+    // Extract string array from [{ specialization: 'Cardiology' }, ...]
+    return profiles.map((p) => p.specialization!);
+  }
+
+  async searchDoctors(filter: { name?: string; specialization?: string }) {
+    const { name, specialization } = filter;
+
+    // Build WHERE clause dynamically
+    const whereClause: any = {
+      role_id: 3, // only doctors
+    };
+
+    if (name) {
+      // Split by space and create AND conditions to match all words in first or last name
+      const nameWords = name.trim().split(/\s+/);
+
+      whereClause.AND = nameWords.map((word: string) => ({
+        OR: [
+          { first_name: { contains: word, mode: 'insensitive' } },
+          { last_name: { contains: word, mode: 'insensitive' } },
+        ],
+      }));
+    }
+
+    if (specialization) {
+      // specialization filter inside related DoctorProfile
+      whereClause.DoctorProfile = {
+        specialization: { contains: specialization, mode: 'insensitive' },
+      };
+    }
+
+    const doctors = await this.prisma.user.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        first_name: true,
+        last_name: true,
+        email: true,
+        phone_number: true,
+        DoctorProfile: {
+          select: {
+            specialization: true,
+            hospital: true,
+            fee: true,
+            rating: true,
+          },
+        },
+      },
+      take: 50, // limit results for performance
+    });
+
+    return doctors;
   }
 }

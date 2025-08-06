@@ -11,4 +11,6 @@ export class BookAppointmentDto {
   @IsString()
   @MaxLength(500, { message: 'Notes cannot exceed 500 characters' })
   notes?: string;
+  @IsString()
+  type: string;
 }
