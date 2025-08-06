@@ -11,6 +11,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { DoctorProfileModule } from './user/doctor/doctor-profile/doctor-profile.module';
 import { PatientModule } from './patient/patient.module';
 import { DoctorAvailabilityModule } from './appointment/doctor-availability/doctor-availability.module';
+import { ConversationModule } from './conversation/conversation.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { DoctorAvailabilityModule } from './appointment/doctor-availability/doct
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ConversationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
