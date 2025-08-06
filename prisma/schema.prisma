@@ -450,6 +450,22 @@ enum AppointmentStatus {
   completed
 }
 
+enum AppointmentType {
+  follow_up // Revisit after a previous consultation
+  check_up // Routine health check
+  consultation // General consultation
+  emergency // Urgent care
+  surgery // Surgical procedure
+  vaccination // Immunization appointment
+  lab_test // Blood tests, urine tests, etc.
+  therapy // Physical or mental therapy session
+  screening // Preventive screenings (e.g., mammogram)
+  diagnosis // For identifying a condition
+  prescription_renewal // For renewing ongoing medications
+  prenatal // Pregnancy-related appointments
+  postnatal // After childbirth
+}
+
 model Appointment {
   id      Int     @id @default(autoincrement())
   slot_id Int     @unique
