@@ -460,6 +460,8 @@ model Appointment {
   user_id Int
   notes   String?
 
+  type String?
+
   slot AppointmentSlot @relation(fields: [slot_id], references: [id], onDelete: Cascade)
   user User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
