@@ -1343,10 +1343,26 @@ export class DoctorAvailabilityService {
 
   // Count Doctors
   async getDoctorCount() {
-    const count = await this.prisma.user.count({
+    const doctors = await this.prisma.user.findMany({
       where: { role_id: 3 }, // doctor role
+      select: {
+        user_id: true,
+        first_name: true,
+        last_name: true,
+        email: true,
+      },
     });
-    return { doctorCount: count };
+
+    const doctorList = doctors.map((doc) => ({
+      user_id: doc.user_id,
+      name: `${doc.first_name} ${doc.last_name}`,
+      email: doc.email,
+    }));
+
+    return {
+      doctorCount: doctorList.length,
+      doctors: doctorList,
+    };
   }
 
   async getLast7DaysDoctorCounts() {
