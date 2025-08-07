@@ -126,4 +126,36 @@ export class AppointmentController {
       data: doctors,
     };
   }
+
+  @Get('Patients/Count')
+  async getPatientCount() {
+    return this.doctorAvailabilityService.getPatientCount();
+  }
+
+  @Get('Doctors/Count')
+  async getDoctorCount() {
+    return this.doctorAvailabilityService.getDoctorCount();
+  }
+
+  @Get('Doctors/New/Last7Days')
+  async getLast7DaysDoctorCounts() {
+    return this.doctorAvailabilityService.getLast7DaysDoctorCounts();
+  }
+
+  // GET /users/patients/new/last7days
+  @Get('Patients/New/Last7Days')
+  async getLast7DaysPatientCounts() {
+    return this.doctorAvailabilityService.getLast7DaysPatientCounts();
+  }
+
+  @Get('Count')
+  async getTotalAppointmentCount() {
+    return this.doctorAvailabilityService.getTotalAppointmentCount();
+  }
+
+  // GET /appointments/last7days
+  @Get('Last7Days')
+  async getLast7DaysAppointmentCounts() {
+    return this.doctorAvailabilityService.getLast7DaysAppointmentCounts();
+  }
 }

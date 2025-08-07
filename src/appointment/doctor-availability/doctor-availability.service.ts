@@ -1332,4 +1332,132 @@ export class DoctorAvailabilityService {
 
     return doctors;
   }
+
+  async getPatientCount() {
+    const count = await this.prisma.user.count({
+      where: { role_id: 2 }, // patient role
+    });
+    return { patientCount: count };
+  }
+
+  // Count Doctors
+  async getDoctorCount() {
+    const count = await this.prisma.user.count({
+      where: { role_id: 3 }, // doctor role
+    });
+    return { doctorCount: count };
+  }
+
+  async getLast7DaysDoctorCounts() {
+    const today = startOfDay(new Date());
+    const sevenDaysAgo = subDays(today, 6);
+
+    const rawData = await this.prisma.user.groupBy({
+      by: ['created_at'],
+      where: {
+        role_id: 3, // Doctor role
+        created_at: {
+          gte: sevenDaysAgo,
+          lte: today,
+        },
+      },
+      _count: { _all: true },
+    });
+
+    const dateMap: Record<string, number> = {};
+    rawData.forEach((row) => {
+      const dateStr = row.created_at.toISOString().split('T')[0];
+      dateMap[dateStr] = row._count._all;
+    });
+
+    const results: { date: string; count: number }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const day = subDays(today, i);
+      const dateStr = day.toISOString().split('T')[0];
+      results.unshift({
+        date: dateStr,
+        count: dateMap[dateStr] || 0,
+      });
+    }
+
+    return results;
+  }
+
+  // Get last 7 days new patients
+  async getLast7DaysPatientCounts() {
+    const today = startOfDay(new Date());
+    const sevenDaysAgo = subDays(today, 6);
+
+    const rawData = await this.prisma.user.groupBy({
+      by: ['created_at'],
+      where: {
+        role_id: 2, // Patient role
+        created_at: {
+          gte: sevenDaysAgo,
+          lte: today,
+        },
+      },
+      _count: { _all: true },
+    });
+
+    const dateMap: Record<string, number> = {};
+    rawData.forEach((row) => {
+      const dateStr = row.created_at.toISOString().split('T')[0];
+      dateMap[dateStr] = row._count._all;
+    });
+
+    const results: { date: string; count: number }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const day = subDays(today, i);
+      const dateStr = day.toISOString().split('T')[0];
+      results.unshift({
+        date: dateStr,
+        count: dateMap[dateStr] || 0,
+      });
+    }
+
+    return results;
+  }
+
+  async getTotalAppointmentCount() {
+    const count = await this.prisma.appointment.count();
+    return { totalAppointments: count };
+  }
+
+  // 2️⃣ Last 7 days appointments by day
+  async getLast7DaysAppointmentCounts() {
+    const today = startOfDay(new Date());
+    const sevenDaysAgo = subDays(today, 6);
+
+    const rawData = await this.prisma.appointment.groupBy({
+      by: ['created_at'],
+      where: {
+        created_at: {
+          gte: sevenDaysAgo,
+          lte: today,
+        },
+      },
+      _count: { _all: true },
+    });
+
+    // Convert DB results to a date => count map
+    const dateMap: Record<string, number> = {};
+    rawData.forEach((row) => {
+      const dateStr = row.created_at.toISOString().split('T')[0];
+      dateMap[dateStr] = row._count._all;
+    });
+
+    // Fill all 7 days with counts (0 if no data)
+    const results: { date: string; count: number }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const day = subDays(today, i);
+      const dateStr = day.toISOString().split('T')[0];
+      results.unshift({
+        date: dateStr,
+        count: dateMap[dateStr] || 0,
+      });
+    }
+
+    return results;
+  }
 }
