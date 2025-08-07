@@ -1049,6 +1049,7 @@ export class DoctorAvailabilityService {
         const age = differenceInYears(new Date(), new Date(user.date_of_birth));
 
         uniquePatientsMap.set(patientId, {
+          appointment_id: appointment.id,
           user_id: patientId,
           name: fullName,
           gender: user.gender,
